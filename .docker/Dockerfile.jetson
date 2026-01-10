@@ -1,0 +1,15 @@
+FROM dustynv/ros:humble-desktop-l4t-r32.7.1
+
+SHELL ["/bin/bash", "-lc"]
+
+# Só pip (sem apt) p/ evitar GPG de bionic
+RUN python3 -m pip install --upgrade pip \
+ && pip3 install --no-cache-dir colcon-common-extensions pyserial
+
+# Carregar o ambiente ROS 2 Humble corretamente em TODO shell
+# (note o 'install' no caminho)
+RUN echo 'source /opt/ros/humble/install/setup.bash' >> /root/.bashrc \
+ && printf "echo \"sourcing   /opt/ros/humble/install/setup.bash\"\n" >> /root/.bashrc
+
+WORKDIR /workspace
+CMD ["bash"]

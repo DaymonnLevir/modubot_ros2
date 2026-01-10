@@ -1,0 +1,23 @@
+[31mCMake Error at /usr/local/lib/python3.6/dist-packages/cmake/data/share/cmake-3.27/Modules/CMakeTestCCompiler.cmake:67 (message):
+  The C compiler
+
+    "/usr/bin/cc"
+
+  is not able to compile a simple test program.
+
+  It fails with the following output:
+
+    Change Dir: '/workspace/build/modubot_joystick/CMakeFiles/CMakeScratch/TryCompile-1l2xhr'
+    
+    Run Build Command(s): /usr/local/lib/python3.6/dist-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7b6fe/fast
+    No such file or directory
+    
+    
+
+  
+
+  CMake will not be able to correctly generate this project.
+Call Stack (most recent call first):
+  CMakeLists.txt:2 (project)
+
+[0m

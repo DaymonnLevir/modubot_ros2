@@ -1,0 +1,32 @@
+[0.762s] Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/workspace/modubot_ws/install/teleop_twist_keyboard:/workspace/modubot_ws/install/modubot_teleop:/workspace/modubot_ws/install/modubot_odometry /usr/local/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
+[6.246s] -- The C compiler identification is GNU 7.5.0
+[6.247s] -- The CXX compiler identification is GNU 7.5.0
+[6.248s] -- Detecting C compiler ABI info
+[6.249s] -- Detecting C compiler ABI info - failed
+[6.251s] -- Check for working C compiler: /usr/bin/cc
+[6.253s] -- Check for working C compiler: /usr/bin/cc - broken
+[6.255s] -- Configuring incomplete, errors occurred!
+[6.256s] [31mCMake Error at /usr/local/lib/python3.6/dist-packages/cmake/data/share/cmake-3.27/Modules/CMakeTestCCompiler.cmake:67 (message):
+[6.257s]   The C compiler
+[6.258s] 
+[6.262s]     "/usr/bin/cc"
+[6.263s] 
+[6.264s]   is not able to compile a simple test program.
+[6.265s] 
+[6.268s]   It fails with the following output:
+[6.270s] 
+[6.270s]     Change Dir: '/workspace/build/modubot_joystick/CMakeFiles/CMakeScratch/TryCompile-1l2xhr'
+[6.272s]     
+[6.272s]     Run Build Command(s): /usr/local/lib/python3.6/dist-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7b6fe/fast
+[6.273s]     No such file or directory
+[6.275s]     
+[6.276s]     
+[6.277s] 
+[6.281s]   
+[6.282s] 
+[6.283s]   CMake will not be able to correctly generate this project.
+[6.288s] Call Stack (most recent call first):
+[6.289s]   CMakeLists.txt:2 (project)
+[6.291s] 
+[6.292s] [0m
+[6.294s] Invoked command in '/workspace/build/modubot_joystick' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/workspace/modubot_ws/install/teleop_twist_keyboard:/workspace/modubot_ws/install/modubot_teleop:/workspace/modubot_ws/install/modubot_odometry /usr/local/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
