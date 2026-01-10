@@ -1,0 +1,24 @@
+# ROS2/colcon
+modubot_ws/build/
+modubot_ws/install/
+modubot_ws/log/
+
+# editor swap
+*.swp
+*.swo
+
+# VSCode/IDE
+.vscode/
+.idea/
+
+# python cache
+__pycache__/
+*.pyc
+
+# env/secrets
+.env
+*.key
+*.pem
+
+# temp
+*.tmp
