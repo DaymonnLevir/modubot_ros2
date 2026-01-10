@@ -1,0 +1,30 @@
+# ROS2/colcon
+build/
+install/
+log/
+
+# Python/cache
+__pycache__/
+*.pyc
+*.pyo
+
+# VSCode/IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ROS bags / datasets (se você usa)
+*.bag
+*.db3
+
+# Env / secrets
+.env
+*.key
+*.pem
+
+# Temp
+*.swp
+*.tmp

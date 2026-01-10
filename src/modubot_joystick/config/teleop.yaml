@@ -1,0 +1,23 @@
+joy_node:
+  ros__parameters:
+    dev: "/dev/input/js0"
+    deadzone: 0.05
+    autorepeat_rate: 20.0                                                                                                                            
+
+teleop_twist_joy_node:
+  ros__parameters:
+    axis_linear:
+      x: 1       # stick ESQ vertical (frente/trás)
+    scale_linear:
+      x: 0.1
+      turbo: 1.0
+
+    axis_angular:
+      yaw: 2      # stick DIR horizontal (girar)
+    scale_angular:
+      yaw: -1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+      turbo: -2.0
+
+    enable_button: 5         # RB (segure para habilitar)
+    enable_turbo_button: 4   # LB (turbo enquanto pressionado)
+
