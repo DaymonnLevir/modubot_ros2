@@ -1,0 +1,192 @@
+<?xml version="1.0" ?>
+<robot name="modubot_model" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find modubot_model_description)/urdf/materials.xacro" />
+<xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.trans" />
+<xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.gazebo" />
+<link name="base_link">
+  <inertial>
+    <origin xyz="-0.14926905473131497 0.0023434434723088758 0.8242367512527994" rpy="0 0 0"/>
+    <mass value="8"/>
+    <inertia ixx="16.078824" iyy="16.162502" izz="1.316251" ixy="-0.003757" iyz="-0.012533" ixz="-0.435933"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="lidar_1">
+  <inertial>
+    <origin xyz="2.3627128408571993e-07 8.867168478469967e-08 0.002500135965096101" rpy="0 0 0"/>
+    <mass value="0.06"/>
+    <inertia ixx="8e-06" iyy="8e-06" izz="1.6e-05" ixy="-0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.002507 -0.004307 -0.219668" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.002507 -0.004307 -0.219668" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="right_caster_1">
+  <inertial>
+    <origin xyz="-4.3542709354804643e-07 0.05000034960366902 -0.022886164583698892" rpy="0 0 0"/>
+    <mass value="0.06"/>
+    <inertia ixx="0.000117" iyy="9.7e-05" izz="7.1e-05" ixy="-0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.375122 0.16578 -0.047978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.375122 0.16578 -0.047978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="left_caster_1">
+  <inertial>
+    <origin xyz="-4.3542709354804643e-07 -0.04999964719258099 -0.022886164583698892" rpy="0 0 0"/>
+    <mass value="0.06"/>
+    <inertia ixx="0.000117" iyy="9.7e-05" izz="7.1e-05" ixy="-0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.375122 -0.16422 -0.047978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.375122 -0.16422 -0.047978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="right_wheel_1">
+  <inertial>
+    <origin xyz="2.752114103439767e-07 -0.021499759694523987 1.9659229817670099e-07" rpy="0 0 0"/>
+    <mass value="1.0"/>
+    <inertia ixx="0.004845" iyy="0.008397" izz="0.004845" ixy="0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.001398 0.100604 -0.060978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.001398 0.100604 -0.060978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="left_wheel_1">
+  <inertial>
+    <origin xyz="2.752114213573024e-07 0.02150024030547497 1.9659229787832855e-07" rpy="0 0 0"/>
+    <mass value="1.0"/>
+    <inertia ixx="0.004845" iyy="0.008397" izz="0.004845" ixy="0.0" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.001398 -0.106396 -0.060978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.001398 -0.106396 -0.060978" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="camera_1">
+  <inertial>
+    <origin xyz="-0.007999988540329073 4.989541105802908e-08 -8.848169996689137e-08" rpy="0 0 0"/>
+    <mass value="0.04"/>
+    <inertia ixx="2e-06" iyy="3e-06" izz="3e-06" ixy="0.0" iyz="0.0" ixz="-0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.101 -0.002 -1.486512" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.101 -0.002 -1.486512" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="file://$(find modubot_model_description)/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="lidar_joint" type="fixed">
+  <origin xyz="0.002507 0.004307 0.219668" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="lidar_1"/>
+</joint>
+
+<joint name="right_caster_joint" type="fixed">
+  <origin xyz="-0.375122 -0.16578 0.047978" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="right_caster_1"/>
+</joint>
+
+<joint name="left_caster_joint" type="fixed">
+  <origin xyz="-0.375122 0.16422 0.047978" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="left_caster_1"/>
+</joint>
+
+<joint name="right_wheel_joint" type="continuous">
+  <origin xyz="-0.001398 -0.100604 0.060978" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="right_wheel_1"/>
+  <axis xyz="0.0 1.0 0.0"/>
+</joint>
+
+<joint name="left_wheel_joint" type="continuous">
+  <origin xyz="-0.001398 0.106396 0.060978" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="left_wheel_1"/>
+  <axis xyz="0.0 1.0 0.0"/>
+</joint>
+
+<joint name="camera_joint" type="fixed">
+  <origin xyz="-0.101 0.002 1.486512" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="camera_1"/>
+</joint>
+
+</robot>
