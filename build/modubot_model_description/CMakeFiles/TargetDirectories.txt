@@ -1,0 +1,9 @@
+/workspace/build/modubot_model_description/CMakeFiles/uninstall.dir
+/workspace/build/modubot_model_description/CMakeFiles/modubot_model_description_uninstall.dir
+/workspace/build/modubot_model_description/CMakeFiles/test.dir
+/workspace/build/modubot_model_description/CMakeFiles/edit_cache.dir
+/workspace/build/modubot_model_description/CMakeFiles/rebuild_cache.dir
+/workspace/build/modubot_model_description/CMakeFiles/list_install_components.dir
+/workspace/build/modubot_model_description/CMakeFiles/install.dir
+/workspace/build/modubot_model_description/CMakeFiles/install/local.dir
+/workspace/build/modubot_model_description/CMakeFiles/install/strip.dir

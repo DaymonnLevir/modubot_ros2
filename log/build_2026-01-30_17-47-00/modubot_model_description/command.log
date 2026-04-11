@@ -1,0 +1,6 @@
+Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_model_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_model_description
+Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_model_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_model_description
+Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_model_description -- -j4 -l4
+Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_model_description -- -j4 -l4
+Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_model_description
+Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_model_description

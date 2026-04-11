@@ -1,0 +1,2 @@
+# Hashes of file build rules.
+8f606e3fc65c5ba19566f2ae21b5326d CMakeFiles/modubot_joystick_uninstall

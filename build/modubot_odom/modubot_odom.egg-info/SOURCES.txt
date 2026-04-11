@@ -1,0 +1,14 @@
+package.xml
+setup.cfg
+setup.py
+launch/odom_serial.launch.py
+modubot_odom/__init__.py
+modubot_odom/serial_odom_node.py
+modubot_odom.egg-info/PKG-INFO
+modubot_odom.egg-info/SOURCES.txt
+modubot_odom.egg-info/dependency_links.txt
+modubot_odom.egg-info/entry_points.txt
+modubot_odom.egg-info/requires.txt
+modubot_odom.egg-info/top_level.txt
+modubot_odom.egg-info/zip-safe
+resource/modubot_odom

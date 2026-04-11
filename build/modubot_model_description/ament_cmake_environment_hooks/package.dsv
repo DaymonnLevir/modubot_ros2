@@ -1,0 +1,4 @@
+source;share/modubot_model_description/local_setup.bash
+source;share/modubot_model_description/local_setup.dsv
+source;share/modubot_model_description/local_setup.sh
+source;share/modubot_model_description/local_setup.zsh

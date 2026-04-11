@@ -1,0 +1,1 @@
+/workspace/build/modubot_joystick/ament_cmake_core/modubot_joystickConfig-version.cmake

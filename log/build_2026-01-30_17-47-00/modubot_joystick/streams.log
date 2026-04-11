@@ -1,0 +1,39 @@
+[0.088s] Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
+[1.360s] -- The CXX compiler identification is GNU 11.4.0
+[1.361s] -- Detecting CXX compiler ABI info
+[1.361s] -- Detecting CXX compiler ABI info - done
+[1.362s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[1.363s] -- Detecting CXX compile features
+[1.364s] -- Detecting CXX compile features - done
+[1.365s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.556s] -- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+[1.898s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[2.445s] -- Configuring done
+[2.464s] -- Generating done
+[2.469s] -- Build files have been written to: /workspace/build/modubot_joystick
+[2.482s] Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
+[2.487s] Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_joystick -- -j4 -l4
+[2.626s] Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_joystick -- -j4 -l4
+[2.665s] Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_joystick
+[2.691s] -- Install configuration: ""
+[2.693s] -- Execute custom install script
+[2.695s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/launch/__pycache__/joystick_teleop.launch.cpython-36.pyc
+[2.728s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/launch/joystick_teleop.launch.py
+[2.763s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/config/.source.swp
+[2.792s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/config/teleop.yaml
+[2.824s] -- Symlinking: /workspace/install/modubot_joystick/share/ament_index/resource_index/package_run_dependencies/modubot_joystick
+[2.857s] -- Symlinking: /workspace/install/modubot_joystick/share/ament_index/resource_index/parent_prefix_path/modubot_joystick
+[2.894s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/environment/ament_prefix_path.sh
+[2.922s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/environment/ament_prefix_path.dsv
+[2.951s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/environment/path.sh
+[2.978s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/environment/path.dsv
+[3.052s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/local_setup.bash
+[3.060s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/local_setup.sh
+[3.067s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/local_setup.zsh
+[3.099s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/local_setup.dsv
+[3.130s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/package.dsv
+[3.164s] -- Symlinking: /workspace/install/modubot_joystick/share/ament_index/resource_index/packages/modubot_joystick
+[3.200s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/cmake/modubot_joystickConfig.cmake
+[3.244s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/cmake/modubot_joystickConfig-version.cmake
+[3.279s] -- Symlinking: /workspace/install/modubot_joystick/share/modubot_joystick/package.xml
+[3.322s] Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_joystick

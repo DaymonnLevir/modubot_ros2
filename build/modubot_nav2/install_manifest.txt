@@ -1,0 +1,6 @@
+/workspace/install/modubot_nav2/share/modubot_nav2/launch/nav2.launch.py
+/workspace/install/modubot_nav2/share/modubot_nav2/launch/__pycache__/nav2.launch.cpython-310.pyc
+/workspace/install/modubot_nav2/share/modubot_nav2/config/nav2_params.yaml
+/workspace/install/modubot_nav2/share/modubot_nav2/rviz/nav2.rviz
+/workspace/install/modubot_nav2/share/modubot_nav2/maps/piso01.jpg
+/workspace/install/modubot_nav2/share/modubot_nav2/maps/piso01.yaml

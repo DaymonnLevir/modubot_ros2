@@ -18,6 +18,6 @@ teleop_twist_joy_node:
       yaw: -1.2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
       turbo: -2.0
 
-    enable_button: 5         # RB (segure para habilitar)
-    enable_turbo_button: 4   # LB (turbo enquanto pressionado)
+    enable_button: 10         # R1 (segure para habilitar)
+    enable_turbo_button: 9   # L1 (turbo enquanto pressionado)
 

@@ -1,0 +1,1 @@
+/workspace/build/modubot_model_description/ament_cmake_environment_hooks/local_setup.zsh

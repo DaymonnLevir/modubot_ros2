@@ -1,0 +1,9 @@
+source;share/modubot_teleop/hook/pythonpath.ps1
+source;share/modubot_teleop/hook/pythonpath.dsv
+source;share/modubot_teleop/hook/pythonpath.sh
+source;share/modubot_teleop/hook/ament_prefix_path.ps1
+source;share/modubot_teleop/hook/ament_prefix_path.dsv
+source;share/modubot_teleop/hook/ament_prefix_path.sh
+source;../../build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.ps1
+source;../../build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.dsv
+source;../../build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.sh

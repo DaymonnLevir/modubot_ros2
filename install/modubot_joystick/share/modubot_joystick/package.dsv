@@ -1,0 +1,8 @@
+source;share/modubot_joystick/hook/cmake_prefix_path.ps1
+source;share/modubot_joystick/hook/cmake_prefix_path.dsv
+source;share/modubot_joystick/hook/cmake_prefix_path.sh
+source;share/modubot_joystick/local_setup.bash
+source;share/modubot_joystick/local_setup.dsv
+source;share/modubot_joystick/local_setup.ps1
+source;share/modubot_joystick/local_setup.sh
+source;share/modubot_joystick/local_setup.zsh

@@ -1,0 +1,3 @@
+[console_scripts]
+serial_odom = modubot_odom.serial_odom_node:main
+

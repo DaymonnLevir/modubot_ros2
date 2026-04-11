@@ -1,0 +1,535 @@
+[0.449s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build', '--symlink-install']
+[0.449s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=True, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=4, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7f92808c40>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7f929c5f30>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7f929c5f30>>)
+[1.062s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[1.062s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[1.067s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[1.067s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[1.067s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[1.067s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[1.068s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/workspace'
+[1.068s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[1.069s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[1.069s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[1.069s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[1.069s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[1.070s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[1.070s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[1.070s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[1.070s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[1.117s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[1.118s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[1.118s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[1.118s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[1.118s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[1.119s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['ignore', 'ignore_ament_install']
+[1.119s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'ignore'
+[1.119s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'ignore_ament_install'
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['colcon_pkg']
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'colcon_pkg'
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['colcon_meta']
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'colcon_meta'
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['ros']
+[1.120s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'ros'
+[1.121s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['cmake', 'python']
+[1.121s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'cmake'
+[1.121s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'python'
+[1.121s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extensions ['python_setup_py']
+[1.122s] Level 1:colcon.colcon_core.package_identification:_identify(Firmwere Esp32) by extension 'python_setup_py'
+[1.122s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[1.122s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[1.123s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[1.123s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[1.123s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[1.124s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[1.127s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[1.128s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[1.128s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[1.128s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['ignore', 'ignore_ament_install']
+[1.129s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'ignore'
+[1.129s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'ignore_ament_install'
+[1.129s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['colcon_pkg']
+[1.129s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'colcon_pkg'
+[1.130s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['colcon_meta']
+[1.130s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'colcon_meta'
+[1.130s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['ros']
+[1.130s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'ros'
+[1.130s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['cmake', 'python']
+[1.131s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'cmake'
+[1.131s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'python'
+[1.131s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extensions ['python_setup_py']
+[1.131s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws) by extension 'python_setup_py'
+[1.132s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/build) by extensions ['ignore', 'ignore_ament_install']
+[1.133s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/build) by extension 'ignore'
+[1.133s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/build) ignored
+[1.134s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/install) by extensions ['ignore', 'ignore_ament_install']
+[1.134s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/install) by extension 'ignore'
+[1.135s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/install) ignored
+[1.135s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/log) by extensions ['ignore', 'ignore_ament_install']
+[1.136s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/log) by extension 'ignore'
+[1.136s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/log) ignored
+[1.136s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['ignore', 'ignore_ament_install']
+[1.137s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'ignore'
+[1.137s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'ignore_ament_install'
+[1.137s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['colcon_pkg']
+[1.137s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'colcon_pkg'
+[1.138s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['colcon_meta']
+[1.138s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'colcon_meta'
+[1.138s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['ros']
+[1.138s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'ros'
+[1.139s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['cmake', 'python']
+[1.139s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'cmake'
+[1.139s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'python'
+[1.139s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extensions ['python_setup_py']
+[1.139s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src) by extension 'python_setup_py'
+[1.146s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extensions ['ignore', 'ignore_ament_install']
+[1.146s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extension 'ignore'
+[1.146s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extension 'ignore_ament_install'
+[1.146s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extensions ['colcon_pkg']
+[1.147s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extension 'colcon_pkg'
+[1.147s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extensions ['colcon_meta']
+[1.147s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extension 'colcon_meta'
+[1.147s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extensions ['ros']
+[1.147s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_joystick) by extension 'ros'
+[1.157s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/modubot_joystick' with type 'ros.ament_cmake' and name 'modubot_joystick'
+[1.159s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extensions ['ignore', 'ignore_ament_install']
+[1.159s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extension 'ignore'
+[1.159s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extension 'ignore_ament_install'
+[1.160s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extensions ['colcon_pkg']
+[1.160s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extension 'colcon_pkg'
+[1.160s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extensions ['colcon_meta']
+[1.160s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extension 'colcon_meta'
+[1.160s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extensions ['ros']
+[1.161s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_model_description) by extension 'ros'
+[1.163s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/modubot_model_description' with type 'ros.ament_cmake' and name 'modubot_model_description'
+[1.164s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extensions ['ignore', 'ignore_ament_install']
+[1.164s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extension 'ignore'
+[1.164s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extension 'ignore_ament_install'
+[1.165s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extensions ['colcon_pkg']
+[1.165s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extension 'colcon_pkg'
+[1.165s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extensions ['colcon_meta']
+[1.165s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extension 'colcon_meta'
+[1.165s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extensions ['ros']
+[1.166s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_nav2) by extension 'ros'
+[1.169s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/modubot_nav2' with type 'ros.ament_cmake' and name 'modubot_nav2'
+[1.171s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extensions ['ignore', 'ignore_ament_install']
+[1.171s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extension 'ignore'
+[1.171s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extension 'ignore_ament_install'
+[1.171s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extensions ['colcon_pkg']
+[1.172s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extension 'colcon_pkg'
+[1.172s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extensions ['colcon_meta']
+[1.172s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extension 'colcon_meta'
+[1.172s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extensions ['ros']
+[1.172s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_odom) by extension 'ros'
+[1.177s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/modubot_odom' with type 'ros.ament_python' and name 'modubot_odom'
+[1.182s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extensions ['ignore', 'ignore_ament_install']
+[1.182s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extension 'ignore'
+[1.182s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extension 'ignore_ament_install'
+[1.183s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extensions ['colcon_pkg']
+[1.183s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extension 'colcon_pkg'
+[1.183s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extensions ['colcon_meta']
+[1.183s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extension 'colcon_meta'
+[1.184s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extensions ['ros']
+[1.184s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/modubot_teleop) by extension 'ros'
+[1.187s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/modubot_teleop' with type 'ros.ament_python' and name 'modubot_teleop'
+[1.192s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extensions ['ignore', 'ignore_ament_install']
+[1.193s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extension 'ignore'
+[1.194s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extension 'ignore_ament_install'
+[1.194s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extensions ['colcon_pkg']
+[1.194s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extension 'colcon_pkg'
+[1.195s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extensions ['colcon_meta']
+[1.195s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extension 'colcon_meta'
+[1.195s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extensions ['ros']
+[1.195s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/rplidar_ros) by extension 'ros'
+[1.199s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/rplidar_ros' with type 'ros.ament_cmake' and name 'rplidar_ros'
+[1.200s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extensions ['ignore', 'ignore_ament_install']
+[1.201s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extension 'ignore'
+[1.201s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extension 'ignore_ament_install'
+[1.202s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extensions ['colcon_pkg']
+[1.202s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extension 'colcon_pkg'
+[1.203s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extensions ['colcon_meta']
+[1.203s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extension 'colcon_meta'
+[1.203s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extensions ['ros']
+[1.203s] Level 1:colcon.colcon_core.package_identification:_identify(modubot_ws/src/teleop_twist_keyboard) by extension 'ros'
+[1.207s] DEBUG:colcon.colcon_core.package_identification:Package 'modubot_ws/src/teleop_twist_keyboard' with type 'ros.ament_python' and name 'teleop_twist_keyboard'
+[1.207s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[1.207s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[1.207s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[1.208s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[1.208s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[1.301s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[1.302s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[1.314s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 243 installed packages in /opt/ros/humble
+[1.322s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[1.530s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_args' from command line to 'None'
+[1.530s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_target' from command line to 'None'
+[1.530s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.530s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_clean_cache' from command line to 'False'
+[1.531s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_clean_first' from command line to 'False'
+[1.531s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'cmake_force_configure' from command line to 'False'
+[1.531s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'ament_cmake_args' from command line to 'None'
+[1.531s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'catkin_cmake_args' from command line to 'None'
+[1.531s] Level 5:colcon.colcon_core.verb:set package 'modubot_joystick' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.531s] DEBUG:colcon.colcon_core.verb:Building package 'modubot_joystick' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/modubot_joystick', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/modubot_joystick', 'merge_install': False, 'path': '/workspace/modubot_ws/src/modubot_joystick', 'symlink_install': True, 'test_result_base': None}
+[1.533s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_args' from command line to 'None'
+[1.533s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_target' from command line to 'None'
+[1.533s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.533s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_clean_cache' from command line to 'False'
+[1.534s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_clean_first' from command line to 'False'
+[1.534s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'cmake_force_configure' from command line to 'False'
+[1.534s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'ament_cmake_args' from command line to 'None'
+[1.534s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'catkin_cmake_args' from command line to 'None'
+[1.534s] Level 5:colcon.colcon_core.verb:set package 'modubot_model_description' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.534s] DEBUG:colcon.colcon_core.verb:Building package 'modubot_model_description' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/modubot_model_description', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/modubot_model_description', 'merge_install': False, 'path': '/workspace/modubot_ws/src/modubot_model_description', 'symlink_install': True, 'test_result_base': None}
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_args' from command line to 'None'
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_target' from command line to 'None'
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_clean_cache' from command line to 'False'
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_clean_first' from command line to 'False'
+[1.536s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'cmake_force_configure' from command line to 'False'
+[1.537s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'ament_cmake_args' from command line to 'None'
+[1.537s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'catkin_cmake_args' from command line to 'None'
+[1.537s] Level 5:colcon.colcon_core.verb:set package 'modubot_nav2' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.537s] DEBUG:colcon.colcon_core.verb:Building package 'modubot_nav2' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/modubot_nav2', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/modubot_nav2', 'merge_install': False, 'path': '/workspace/modubot_ws/src/modubot_nav2', 'symlink_install': True, 'test_result_base': None}
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_args' from command line to 'None'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_target' from command line to 'None'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_clean_cache' from command line to 'False'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_clean_first' from command line to 'False'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'cmake_force_configure' from command line to 'False'
+[1.539s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'ament_cmake_args' from command line to 'None'
+[1.540s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'catkin_cmake_args' from command line to 'None'
+[1.540s] Level 5:colcon.colcon_core.verb:set package 'modubot_odom' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.540s] DEBUG:colcon.colcon_core.verb:Building package 'modubot_odom' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/modubot_odom', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/modubot_odom', 'merge_install': False, 'path': '/workspace/modubot_ws/src/modubot_odom', 'symlink_install': True, 'test_result_base': None}
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_args' from command line to 'None'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_target' from command line to 'None'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_clean_cache' from command line to 'False'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_clean_first' from command line to 'False'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'cmake_force_configure' from command line to 'False'
+[1.542s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'ament_cmake_args' from command line to 'None'
+[1.543s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'catkin_cmake_args' from command line to 'None'
+[1.543s] Level 5:colcon.colcon_core.verb:set package 'modubot_teleop' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.543s] DEBUG:colcon.colcon_core.verb:Building package 'modubot_teleop' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/modubot_teleop', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/modubot_teleop', 'merge_install': False, 'path': '/workspace/modubot_ws/src/modubot_teleop', 'symlink_install': True, 'test_result_base': None}
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_args' from command line to 'None'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_target' from command line to 'None'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_clean_cache' from command line to 'False'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_clean_first' from command line to 'False'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'cmake_force_configure' from command line to 'False'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'ament_cmake_args' from command line to 'None'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'catkin_cmake_args' from command line to 'None'
+[1.545s] Level 5:colcon.colcon_core.verb:set package 'rplidar_ros' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.546s] DEBUG:colcon.colcon_core.verb:Building package 'rplidar_ros' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/rplidar_ros', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/rplidar_ros', 'merge_install': False, 'path': '/workspace/modubot_ws/src/rplidar_ros', 'symlink_install': True, 'test_result_base': None}
+[1.547s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_args' from command line to 'None'
+[1.547s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_target' from command line to 'None'
+[1.547s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_clean_cache' from command line to 'False'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_clean_first' from command line to 'False'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'cmake_force_configure' from command line to 'False'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'ament_cmake_args' from command line to 'None'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'catkin_cmake_args' from command line to 'None'
+[1.548s] Level 5:colcon.colcon_core.verb:set package 'teleop_twist_keyboard' build argument 'catkin_skip_building_tests' from command line to 'False'
+[1.548s] DEBUG:colcon.colcon_core.verb:Building package 'teleop_twist_keyboard' with the following arguments: {'ament_cmake_args': None, 'build_base': '/workspace/build/teleop_twist_keyboard', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/workspace/install/teleop_twist_keyboard', 'merge_install': False, 'path': '/workspace/modubot_ws/src/teleop_twist_keyboard', 'symlink_install': True, 'test_result_base': None}
+[1.549s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[1.554s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[1.555s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/workspace/modubot_ws/src/modubot_joystick' with build type 'ament_cmake'
+[1.555s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/workspace/modubot_ws/src/modubot_joystick'
+[1.568s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[1.569s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.569s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.580s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/workspace/modubot_ws/src/modubot_model_description' with build type 'ament_cmake'
+[1.581s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/workspace/modubot_ws/src/modubot_model_description'
+[1.582s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.583s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.594s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/workspace/modubot_ws/src/modubot_nav2' with build type 'ament_cmake'
+[1.595s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/workspace/modubot_ws/src/modubot_nav2'
+[1.596s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.597s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.607s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/workspace/modubot_ws/src/modubot_odom' with build type 'ament_python'
+[1.608s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_odom', 'ament_prefix_path')
+[1.610s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_odom/share/modubot_odom/hook/ament_prefix_path.ps1'
+[1.613s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_odom/share/modubot_odom/hook/ament_prefix_path.dsv'
+[1.616s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_odom/share/modubot_odom/hook/ament_prefix_path.sh'
+[1.621s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[1.621s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[1.645s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
+[1.665s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_model_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_model_description
+[1.676s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_nav2': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_nav2 -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_nav2
+[2.892s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/workspace/modubot_ws/src/modubot_odom'
+[2.893s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[2.894s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[4.039s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
+[4.045s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_joystick -- -j4 -l4
+[4.184s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_joystick -- -j4 -l4
+[4.222s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_joystick
+[4.230s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_model_description -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_model_description
+[4.231s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_model_description -- -j4 -l4
+[4.239s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_nav2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_nav2 -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_nav2
+[4.247s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_nav2': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_nav2 -- -j4 -l4
+[4.375s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_model_description -- -j4 -l4
+[4.380s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_model_description': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_model_description
+[4.396s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_nav2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/modubot_nav2 -- -j4 -l4
+[4.397s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_nav2': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_nav2
+[4.436s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_odom': PYTHONPATH=/workspace/build/modubot_odom/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/modubot_odom/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/modubot_odom/build --no-deps symlink_data
+[4.871s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_joystick)
+[4.879s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_joystick' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_joystick
+[4.885s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick' for CMake module files
+[4.889s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick' for CMake config files
+[4.891s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_joystick', 'cmake_prefix_path')
+[4.892s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.ps1'
+[4.894s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.dsv'
+[4.897s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.sh'
+[4.900s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/bin'
+[4.900s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/lib/pkgconfig/modubot_joystick.pc'
+[4.901s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/lib/python3.10/site-packages'
+[4.904s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/bin'
+[4.905s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.ps1'
+[4.909s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_joystick/share/modubot_joystick/package.dsv'
+[4.914s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.sh'
+[4.918s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.bash'
+[4.923s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.zsh'
+[4.928s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_joystick/share/colcon-core/packages/modubot_joystick)
+[4.931s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_joystick)
+[4.932s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick' for CMake module files
+[4.935s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick' for CMake config files
+[4.937s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_joystick', 'cmake_prefix_path')
+[4.940s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.ps1'
+[4.942s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.dsv'
+[4.944s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_joystick/share/modubot_joystick/hook/cmake_prefix_path.sh'
+[4.947s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/bin'
+[4.947s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/lib/pkgconfig/modubot_joystick.pc'
+[4.949s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/lib/python3.10/site-packages'
+[4.951s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_joystick/bin'
+[4.953s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.ps1'
+[4.957s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_joystick/share/modubot_joystick/package.dsv'
+[4.959s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.sh'
+[4.962s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.bash'
+[4.964s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_joystick/share/modubot_joystick/package.zsh'
+[4.966s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_joystick/share/colcon-core/packages/modubot_joystick)
+[4.970s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/workspace/modubot_ws/src/modubot_teleop' with build type 'ament_python'
+[4.971s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_teleop', 'ament_prefix_path')
+[4.973s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_teleop/share/modubot_teleop/hook/ament_prefix_path.ps1'
+[4.977s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_teleop/share/modubot_teleop/hook/ament_prefix_path.dsv'
+[4.984s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_teleop/share/modubot_teleop/hook/ament_prefix_path.sh'
+[4.989s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[4.989s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[5.073s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_model_description)
+[5.074s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description' for CMake module files
+[5.076s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_model_description' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_model_description
+[5.078s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description' for CMake config files
+[5.079s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_model_description', 'cmake_prefix_path')
+[5.080s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.ps1'
+[5.083s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.dsv'
+[5.084s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.sh'
+[5.087s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/bin'
+[5.087s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/lib/pkgconfig/modubot_model_description.pc'
+[5.088s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/lib/python3.10/site-packages'
+[5.090s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/bin'
+[5.091s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.ps1'
+[5.093s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_model_description/share/modubot_model_description/package.dsv'
+[5.095s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.sh'
+[5.096s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.bash'
+[5.098s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.zsh'
+[5.099s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_model_description/share/colcon-core/packages/modubot_model_description)
+[5.102s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_model_description)
+[5.103s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description' for CMake module files
+[5.105s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description' for CMake config files
+[5.106s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_model_description', 'cmake_prefix_path')
+[5.107s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.ps1'
+[5.109s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.dsv'
+[5.112s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_model_description/share/modubot_model_description/hook/cmake_prefix_path.sh'
+[5.114s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/bin'
+[5.114s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/lib/pkgconfig/modubot_model_description.pc'
+[5.115s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/lib/python3.10/site-packages'
+[5.117s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_model_description/bin'
+[5.119s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.ps1'
+[5.121s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_model_description/share/modubot_model_description/package.dsv'
+[5.123s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.sh'
+[5.125s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.bash'
+[5.126s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_model_description/share/modubot_model_description/package.zsh'
+[5.128s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_model_description/share/colcon-core/packages/modubot_model_description)
+[6.115s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/workspace/modubot_ws/src/modubot_teleop'
+[6.144s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[6.144s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[6.155s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/workspace/modubot_ws/src/rplidar_ros' with build type 'ament_cmake'
+[6.155s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/workspace/modubot_ws/src/rplidar_ros'
+[6.157s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[6.157s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[6.172s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_nav2)
+[6.174s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2' for CMake module files
+[6.177s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_nav2' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/modubot_nav2
+[6.178s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2' for CMake config files
+[6.180s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_nav2', 'cmake_prefix_path')
+[6.181s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.ps1'
+[6.183s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.dsv'
+[6.184s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.sh'
+[6.186s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/bin'
+[6.187s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/lib/pkgconfig/modubot_nav2.pc'
+[6.188s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/lib/python3.10/site-packages'
+[6.189s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/bin'
+[6.191s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.ps1'
+[6.195s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_nav2/share/modubot_nav2/package.dsv'
+[6.198s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.sh'
+[6.200s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.bash'
+[6.202s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.zsh'
+[6.203s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_nav2/share/colcon-core/packages/modubot_nav2)
+[6.206s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_nav2)
+[6.207s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2' for CMake module files
+[6.210s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2' for CMake config files
+[6.211s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_nav2', 'cmake_prefix_path')
+[6.212s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.ps1'
+[6.214s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.dsv'
+[6.216s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_nav2/share/modubot_nav2/hook/cmake_prefix_path.sh'
+[6.218s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/bin'
+[6.219s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/lib/pkgconfig/modubot_nav2.pc'
+[6.220s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/lib/python3.10/site-packages'
+[6.222s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_nav2/bin'
+[6.223s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.ps1'
+[6.225s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_nav2/share/modubot_nav2/package.dsv'
+[6.227s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.sh'
+[6.229s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.bash'
+[6.230s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_nav2/share/modubot_nav2/package.zsh'
+[6.232s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_nav2/share/colcon-core/packages/modubot_nav2)
+[6.236s] INFO:colcon.colcon_ros.task.ament_python.build:Building ROS package in '/workspace/modubot_ws/src/teleop_twist_keyboard' with build type 'ament_python'
+[6.236s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_twist_keyboard', 'ament_prefix_path')
+[6.237s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/ament_prefix_path.ps1'
+[6.285s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/ament_prefix_path.dsv'
+[6.288s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/ament_prefix_path.sh'
+[6.291s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[6.291s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[6.348s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/rplidar_ros': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/rplidar_ros -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/rplidar_ros
+[7.480s] INFO:colcon.colcon_core.task.python.build:Building Python package in '/workspace/modubot_ws/src/teleop_twist_keyboard'
+[7.482s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[7.482s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[7.496s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_odom', 'pythonpath_develop')
+[7.497s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/modubot_odom/share/modubot_odom/hook/pythonpath_develop.ps1'
+[7.498s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_odom' returned '0': PYTHONPATH=/workspace/build/modubot_odom/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/modubot_odom/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/modubot_odom/build --no-deps symlink_data
+[7.786s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/build/modubot_odom/share/modubot_odom/hook/pythonpath_develop.dsv'
+[7.788s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/modubot_odom/share/modubot_odom/hook/pythonpath_develop.sh'
+[7.790s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom' for CMake module files
+[7.792s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom' for CMake config files
+[7.794s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom/lib'
+[7.795s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom/bin'
+[7.796s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom/lib/pkgconfig/modubot_odom.pc'
+[7.797s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom/lib/python3.10/site-packages'
+[7.797s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_odom', 'pythonpath')
+[7.798s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_odom/share/modubot_odom/hook/pythonpath.ps1'
+[7.800s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_odom/share/modubot_odom/hook/pythonpath.dsv'
+[7.801s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_odom/share/modubot_odom/hook/pythonpath.sh'
+[7.804s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_odom/bin'
+[7.805s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_odom)
+[7.806s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_odom/share/modubot_odom/package.ps1'
+[7.809s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_odom/share/modubot_odom/package.dsv'
+[7.811s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_odom/share/modubot_odom/package.sh'
+[7.813s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_odom/share/modubot_odom/package.bash'
+[7.815s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_odom/share/modubot_odom/package.zsh'
+[7.817s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_odom/share/colcon-core/packages/modubot_odom)
+[7.894s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/modubot_teleop': PYTHONPATH=/workspace/build/modubot_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/modubot_teleop/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/modubot_teleop/build --no-deps symlink_data
+[9.320s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/teleop_twist_keyboard': PYTHONPATH=/workspace/build/teleop_twist_keyboard/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/teleop_twist_keyboard/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/teleop_twist_keyboard/build --no-deps symlink_data
+[9.734s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_teleop', 'pythonpath_develop')
+[9.735s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.ps1'
+[9.736s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/modubot_teleop' returned '0': PYTHONPATH=/workspace/build/modubot_teleop/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/modubot_teleop/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/modubot_teleop/build --no-deps symlink_data
+[9.738s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.dsv'
+[9.740s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/modubot_teleop/share/modubot_teleop/hook/pythonpath_develop.sh'
+[9.743s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop' for CMake module files
+[9.745s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop' for CMake config files
+[9.750s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop/lib'
+[9.751s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop/bin'
+[9.751s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop/lib/pkgconfig/modubot_teleop.pc'
+[9.752s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop/lib/python3.10/site-packages'
+[9.753s] Level 1:colcon.colcon_core.shell:create_environment_hook('modubot_teleop', 'pythonpath')
+[9.754s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_teleop/share/modubot_teleop/hook/pythonpath.ps1'
+[9.756s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/modubot_teleop/share/modubot_teleop/hook/pythonpath.dsv'
+[9.757s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/modubot_teleop/share/modubot_teleop/hook/pythonpath.sh'
+[9.760s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/modubot_teleop/bin'
+[9.760s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(modubot_teleop)
+[9.762s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_teleop/share/modubot_teleop/package.ps1'
+[9.764s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/modubot_teleop/share/modubot_teleop/package.dsv'
+[9.767s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_teleop/share/modubot_teleop/package.sh'
+[9.769s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_teleop/share/modubot_teleop/package.bash'
+[9.771s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/modubot_teleop/share/modubot_teleop/package.zsh'
+[9.772s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/modubot_teleop/share/colcon-core/packages/modubot_teleop)
+[11.131s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_twist_keyboard', 'pythonpath_develop')
+[11.136s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath_develop.ps1'
+[11.137s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/teleop_twist_keyboard' returned '0': PYTHONPATH=/workspace/build/teleop_twist_keyboard/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/workspace/install/teleop_twist_keyboard/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --editable --build-directory /workspace/build/teleop_twist_keyboard/build --no-deps symlink_data
+[11.143s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/build/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath_develop.dsv'
+[11.146s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/build/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath_develop.sh'
+[11.150s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard' for CMake module files
+[11.152s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard' for CMake config files
+[11.158s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard/lib'
+[11.159s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard/bin'
+[11.160s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard/lib/pkgconfig/teleop_twist_keyboard.pc'
+[11.162s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard/lib/python3.10/site-packages'
+[11.162s] Level 1:colcon.colcon_core.shell:create_environment_hook('teleop_twist_keyboard', 'pythonpath')
+[11.163s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath.ps1'
+[11.165s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath.dsv'
+[11.167s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/hook/pythonpath.sh'
+[11.170s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/teleop_twist_keyboard/bin'
+[11.170s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(teleop_twist_keyboard)
+[11.172s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/package.ps1'
+[11.176s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/package.dsv'
+[11.178s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/package.sh'
+[11.180s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/package.bash'
+[11.181s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/teleop_twist_keyboard/share/teleop_twist_keyboard/package.zsh'
+[11.183s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/teleop_twist_keyboard/share/colcon-core/packages/teleop_twist_keyboard)
+[11.853s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/rplidar_ros' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/rplidar_ros -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/rplidar_ros
+[11.857s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/rplidar_ros': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/rplidar_ros -- -j4 -l4
+[73.918s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/rplidar_ros' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /workspace/build/rplidar_ros -- -j4 -l4
+[73.930s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/workspace/build/rplidar_ros': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/rplidar_ros
+[75.153s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(rplidar_ros)
+[75.156s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros' for CMake module files
+[75.156s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/workspace/build/rplidar_ros' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /workspace/build/rplidar_ros
+[75.159s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros' for CMake config files
+[75.161s] Level 1:colcon.colcon_core.shell:create_environment_hook('rplidar_ros', 'cmake_prefix_path')
+[75.162s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.ps1'
+[75.173s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.dsv'
+[75.180s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.sh'
+[75.184s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib'
+[75.184s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/bin'
+[75.184s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib/pkgconfig/rplidar_ros.pc'
+[75.186s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib/python3.10/site-packages'
+[75.187s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/bin'
+[75.189s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.ps1'
+[75.191s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/rplidar_ros/share/rplidar_ros/package.dsv'
+[75.193s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.sh'
+[75.195s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.bash'
+[75.199s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.zsh'
+[75.204s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/rplidar_ros/share/colcon-core/packages/rplidar_ros)
+[75.207s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(rplidar_ros)
+[75.208s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros' for CMake module files
+[75.211s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros' for CMake config files
+[75.214s] Level 1:colcon.colcon_core.shell:create_environment_hook('rplidar_ros', 'cmake_prefix_path')
+[75.215s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.ps1'
+[75.217s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.dsv'
+[75.219s] INFO:colcon.colcon_core.shell:Creating environment hook '/workspace/install/rplidar_ros/share/rplidar_ros/hook/cmake_prefix_path.sh'
+[75.221s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib'
+[75.221s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/bin'
+[75.222s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib/pkgconfig/rplidar_ros.pc'
+[75.223s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/lib/python3.10/site-packages'
+[75.224s] Level 1:colcon.colcon_core.environment:checking '/workspace/install/rplidar_ros/bin'
+[75.226s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.ps1'
+[75.228s] INFO:colcon.colcon_core.shell:Creating package descriptor '/workspace/install/rplidar_ros/share/rplidar_ros/package.dsv'
+[75.230s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.sh'
+[75.231s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.bash'
+[75.233s] INFO:colcon.colcon_core.shell:Creating package script '/workspace/install/rplidar_ros/share/rplidar_ros/package.zsh'
+[75.235s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/workspace/install/rplidar_ros/share/colcon-core/packages/rplidar_ros)
+[75.236s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[75.237s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[75.239s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '0'
+[75.239s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[75.594s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Could not find 'notify-send'
+[75.595s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[75.595s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[75.596s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[75.629s] DEBUG:colcon.colcon_notification.desktop_notification.notify2:Failed to initialize notify2: org.freedesktop.DBus.Error.Spawn.ExecFailed: /usr/bin/dbus-launch terminated abnormally without any error message
+[75.630s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[75.631s] INFO:colcon.colcon_core.shell:Creating prefix script '/workspace/install/local_setup.ps1'
+[75.638s] INFO:colcon.colcon_core.shell:Creating prefix util module '/workspace/install/_local_setup_util_ps1.py'
+[75.645s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/workspace/install/setup.ps1'
+[75.650s] INFO:colcon.colcon_core.shell:Creating prefix script '/workspace/install/local_setup.sh'
+[75.654s] INFO:colcon.colcon_core.shell:Creating prefix util module '/workspace/install/_local_setup_util_sh.py'
+[75.656s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/workspace/install/setup.sh'
+[75.662s] INFO:colcon.colcon_core.shell:Creating prefix script '/workspace/install/local_setup.bash'
+[75.665s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/workspace/install/setup.bash'
+[75.669s] INFO:colcon.colcon_core.shell:Creating prefix script '/workspace/install/local_setup.zsh'
+[75.672s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/workspace/install/setup.zsh'

@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: modubot-teleop
+Version: 0.0.1
+Summary: Bridge /cmd_vel -> ESP32 (V vL vR)
+Home-page: UNKNOWN
+Maintainer: levir
+Maintainer-email: levir@example.com
+License: MIT
+Platform: UNKNOWN
+
+UNKNOWN
+

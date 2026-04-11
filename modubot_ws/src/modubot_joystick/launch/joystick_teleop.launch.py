@@ -57,7 +57,7 @@ def generate_launch_description():
     # 3) bridge /modubot/cmd_vel -> serial (ESP32)
     #
     bridge_node = Node(
-        package='modubot_teleop',
+        package='modubot_serial_bridge',
         executable='cmdvel_to_serial',
         name='cmdvel_to_serial',
         output='screen',

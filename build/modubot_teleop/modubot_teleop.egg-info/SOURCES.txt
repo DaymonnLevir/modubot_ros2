@@ -1,0 +1,14 @@
+package.xml
+setup.cfg
+setup.py
+launch/teleop.launch.py
+modubot_teleop/__init__.py
+modubot_teleop/cmdvel_to_serial.py
+modubot_teleop.egg-info/PKG-INFO
+modubot_teleop.egg-info/SOURCES.txt
+modubot_teleop.egg-info/dependency_links.txt
+modubot_teleop.egg-info/entry_points.txt
+modubot_teleop.egg-info/requires.txt
+modubot_teleop.egg-info/top_level.txt
+modubot_teleop.egg-info/zip-safe
+resource/modubot_teleop

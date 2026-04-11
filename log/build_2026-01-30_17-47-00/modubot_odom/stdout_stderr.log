@@ -1,0 +1,24 @@
+running develop
+running egg_info
+creating modubot_odom.egg-info
+writing modubot_odom.egg-info/PKG-INFO
+writing dependency_links to modubot_odom.egg-info/dependency_links.txt
+writing entry points to modubot_odom.egg-info/entry_points.txt
+writing requirements to modubot_odom.egg-info/requires.txt
+writing top-level names to modubot_odom.egg-info/top_level.txt
+writing manifest file 'modubot_odom.egg-info/SOURCES.txt'
+reading manifest file 'modubot_odom.egg-info/SOURCES.txt'
+writing manifest file 'modubot_odom.egg-info/SOURCES.txt'
+running build_ext
+Creating /workspace/install/modubot_odom/lib/python3.10/site-packages/modubot-odom.egg-link (link to .)
+Installing serial_odom script to /workspace/install/modubot_odom/lib/modubot_odom
+
+Installed /workspace/build/modubot_odom
+running symlink_data
+creating /workspace/install/modubot_odom/share/ament_index
+creating /workspace/install/modubot_odom/share/ament_index/resource_index
+creating /workspace/install/modubot_odom/share/ament_index/resource_index/packages
+symbolically linking /workspace/build/modubot_odom/resource/modubot_odom -> /workspace/install/modubot_odom/share/ament_index/resource_index/packages
+symbolically linking /workspace/build/modubot_odom/package.xml -> /workspace/install/modubot_odom/share/modubot_odom
+creating /workspace/install/modubot_odom/share/modubot_odom/launch
+symbolically linking /workspace/build/modubot_odom/launch/odom_serial.launch.py -> /workspace/install/modubot_odom/share/modubot_odom/launch

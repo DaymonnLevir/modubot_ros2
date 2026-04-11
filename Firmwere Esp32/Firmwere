@@ -118,8 +118,8 @@ void setup(){
   pinMode(SPEED_L, INPUT);  // precisa de pull-up/pull-down externo
   pinMode(SPEED_R, INPUT);
 
-  attachInterrupt(digitalPinToInterrupt(SPEED_L), isrSpeedL, RISING);
-  attachInterrupt(digitalPinToInterrupt(SPEED_R), isrSpeedR, RISING);
+  attachInterrupt(digitalPinToInterrupt(SPEED_L), isrSpeedL, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(SPEED_R), isrSpeedR, CHANGE);
 
   last_cmd_ms = millis();
 
