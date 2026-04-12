@@ -2,8 +2,7 @@
 <robot name="modubot_model" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
 <xacro:include filename="$(find modubot_model_description)/urdf/materials.xacro" />
-<xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.trans" />
-<xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.gazebo" />
+
 <link name="base_link">
   <inertial>
     <origin xyz="-0.14926905473131497 0.0023434434723088758 0.8242367512527994" rpy="0 0 0"/>
@@ -25,7 +24,7 @@
   </collision>
 </link>
 
-<link name="lidar_1">
+<link name="laser">
   <inertial>
     <origin xyz="2.3627128408571993e-07 8.867168478469967e-08 0.002500135965096101" rpy="0 0 0"/>
     <mass value="0.06"/>
@@ -152,9 +151,9 @@
 </link>
 
 <joint name="lidar_joint" type="fixed">
-  <origin xyz="0.002507 0.004307 0.219668" rpy="0 0 0"/>
+  <origin xyz="0.002507 0.004307 0.219668" rpy="0 0 3.14159"/>
   <parent link="base_link"/>
-  <child link="lidar_1"/>
+  <child link="laser"/>
 </joint>
 
 <joint name="right_caster_joint" type="fixed">

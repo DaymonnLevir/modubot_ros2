@@ -1,130 +1,114 @@
 import os
-
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, Command
-from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
-
+from launch.actions import ExecuteProcess
+import xacro
 
 def generate_launch_description():
-    use_sim_time = LaunchConfiguration("use_sim_time")
-    autostart = LaunchConfiguration("autostart")
-    map_yaml = LaunchConfiguration("map")
-    params_file = LaunchConfiguration("params_file")
-    rviz_config = LaunchConfiguration("rviz_config")
-    use_static_tf_laser = LaunchConfiguration("use_static_tf_laser")
+    # 1. Caminhos e Configurações
+    pkg_description = 'modubot_model_description'
+    pkg_nav2 = 'modubot_nav2'
+    pkg_rplidar = 'rplidar_ros'
+    
+    # Processamento do Xacro
+    xacro_file = os.path.join(get_package_share_directory(pkg_description), 'urdf/modubot_model.xacro')
+    robot_description_raw = xacro.process_file(xacro_file).toxml()
 
-    # Ajuste aqui para o seu pacote/arquivo do modelo:
-    description_pkg = "modubot_model_description"
-    xacro_file = "urdf/modubot.urdf.xacro"
-
-    description_share = get_package_share_directory(description_pkg)
-    xacro_path = os.path.join(description_share, xacro_file)
-
-    nav2_share = get_package_share_directory("modubot_nav2")
+    # Configurações do Nav2
+    nav2_share = get_package_share_directory(pkg_nav2)
     default_params = os.path.join(nav2_share, "config", "nav2_params.yaml")
-    default_rviz = os.path.join(nav2_share, "rviz", "nav2.rviz")
     default_map = os.path.join(nav2_share, "maps", "piso01.yaml")
+    default_rviz = os.path.join(nav2_share, "rviz", "nav2.rviz")
 
-    # Robot State Publisher (carrega o CAD/URDF no RViz)
-    robot_state_publisher = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        output="screen",
+    use_sim_time = LaunchConfiguration("use_sim_time", default="false")
+
+    # --- A EQUIPE DE LANÇAMENTO ---
+
+    # A. O Lidar (Atenção à porta USB)
+    launch_rplidar = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory(pkg_rplidar), 'launch', 'rplidar_a1_launch.py')
+        ),
+        launch_arguments={'serial_port': '/dev/ttyUSB1'}.items() # <-- VERIFIQUE SE É ESTA PORTA
+    )
+
+    # B. A Odometria Real (Substituindo a TF Estática)
+    node_odometry = Node(
+        package='modubot_odom',
+        executable='serial_odom',
+        name='serial_odom',
+        output='screen',
         parameters=[{
-            "use_sim_time": use_sim_time,
-            "robot_description": Command(["xacro ", xacro_path]),
-        }],
+            'port': '/dev/ttyUSB0',  # <-- VERIFIQUE SE É ESTA PORTA
+            'baud': 115200,
+            'ticks_per_rev_left': 91.0,
+            'ticks_per_rev_right': 91.0,
+            'wheel_radius': 0.078,
+            'wheel_separation': 0.225,
+            'frame_id': 'odom',
+            'child_frame_id': 'base_link',
+            'debug': False,
+            'use_sim_time': use_sim_time  # <-- GARANTE A SINCRONIA
+        }]
     )
 
-    # Joint State Publisher (ok para RViz; no robô real pode ser opcional se você já publica /joint_states)
-    joint_state_publisher = Node(
-        package="joint_state_publisher",
-        executable="joint_state_publisher",
-        output="screen",
-        parameters=[{"use_sim_time": use_sim_time}],
+    # C. A "Alma" do Robô (Estado e Juntas)
+    node_robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[{'robot_description': robot_description_raw, 'use_sim_time': use_sim_time}]
     )
 
-    # Static TF do LiDAR (use apenas se o seu URDF NÃO publicar base_link->laser)
-    static_tf_laser = Node(
-        package="tf2_ros",
-        executable="static_transform_publisher",
-        output="screen",
-        arguments=["0.20", "0.0", "0.15", "0", "0", "0", "base_link", "laser"],
-        condition=IfCondition(use_static_tf_laser),
+    node_joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        parameters=[{'use_sim_time': use_sim_time}]
     )
 
-    # Nav2 bringup (AMCL + map_server + planner + controller + costmaps + BT)
-    # Importante: passar "map" e "autostart" para o lifecycle manager configurar/ativar sozinho.
+    # O Filtro de Laser (Correção: Usando ExecuteProcess)
+    node_script_filter = ExecuteProcess(
+        cmd=['python3', '/workspace/modubot_ws/src/modubot_model_description/scripts/simple_filter.py'],
+        output='screen'
+    )
+
+    # E. Nav2 Bringup (Mapa, AMCL, Planejador)
     nav2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("nav2_bringup"),
-                "launch",
-                "bringup_launch.py",
-            )
+            os.path.join(get_package_share_directory("nav2_bringup"), "launch", "bringup_launch.py")
         ),
         launch_arguments={
             "use_sim_time": use_sim_time,
-            "autostart": autostart,
-            "map": map_yaml,
-            "params_file": params_file,
-            # Não prejudica; útil se você decidir usar bringup para abrir RViz no futuro
-            "rviz_config": rviz_config,
-            # Em muitos setups ajuda a receber /map de forma "latched" (transient local)
-            "map_subscribe_transient_local": "true",
+            "autostart": "true",
+            "map": LaunchConfiguration("map"),
+            "params_file": LaunchConfiguration("params_file"),
+            "use_robot_state_pub": "false",
         }.items(),
     )
 
-    # RViz2 (você abre manualmente; ok)
-    rviz = Node(
+    # F. Interface Visual (RViz)
+    node_rviz = Node(
         package="rviz2",
         executable="rviz2",
-        output="screen",
-        arguments=["-d", rviz_config],
+        arguments=["-d", LaunchConfiguration("rviz_config"), "-f", "map"],
         parameters=[{"use_sim_time": use_sim_time}],
+        output="screen"
     )
 
     return LaunchDescription([
-        DeclareLaunchArgument(
-            "use_sim_time",
-            default_value="false",
-            description="Use simulation (Gazebo) clock if true",
-        ),
-        DeclareLaunchArgument(
-            "autostart",
-            default_value="true",
-            description="Automatically configure/activate Nav2 lifecycle nodes",
-        ),
-        DeclareLaunchArgument(
-            "params_file",
-            default_value=default_params,
-            description="Full path to the ROS2 parameters file for Nav2",
-        ),
-        DeclareLaunchArgument(
-            "rviz_config",
-            default_value=default_rviz,
-            description="Full path to the RViz2 config file",
-        ),
-        DeclareLaunchArgument(
-            "map",
-            default_value=default_map,
-            description="Full path to the map yaml file",
-        ),
-        DeclareLaunchArgument(
-            "use_static_tf_laser",
-            default_value="true",
-            description="Publish static TF base_link->laser if URDF does not provide it",
-        ),
+        DeclareLaunchArgument("use_sim_time", default_value="false"),
+        DeclareLaunchArgument("params_file", default_value=default_params),
+        DeclareLaunchArgument("rviz_config", default_value=default_rviz),
+        DeclareLaunchArgument("map", default_value=default_map),
 
-        robot_state_publisher,
-        joint_state_publisher,
-        static_tf_laser,
-
+        launch_rplidar,
+        node_odometry,
+        node_robot_state_publisher,
+        node_joint_state_publisher,
+        node_script_filter,
         nav2_bringup,
-        rviz,
+        node_rviz
     ])
-
