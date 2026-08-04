@@ -2,6 +2,7 @@
 modubot_ws/build/
 modubot_ws/install/
 modubot_ws/log/
+modubot_ws/calibration_data/
 
 # editor swap
 *.swp

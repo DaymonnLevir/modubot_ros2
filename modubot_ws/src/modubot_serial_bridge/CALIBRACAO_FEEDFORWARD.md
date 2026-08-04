@@ -44,6 +44,13 @@ Teste o plano sem abrir a porta nem mover o robo:
 ros2 run modubot_serial_bridge feedforward_calibration --dry-run
 ```
 
+No container atual da Jetson, o workspace do host esta montado em
+`/workspace/modubot_ws`. O programa detecta essa montagem e salva por padrao em
+`/workspace/modubot_ws/calibration_data`, que corresponde a
+`/home/jetson/modubot_ros2/modubot_ws/calibration_data` no host. Assim, os dados
+continuam disponiveis mesmo se o container for recriado. O local tambem pode ser
+definido explicitamente com `--output-dir` ou `MODUBOT_CALIBRATION_DIR`.
+
 ## Seguranca e configuracao do ensaio
 
 - Use uma area plana, seca, livre e maior que a distancia percorrida no patamar
@@ -102,8 +109,8 @@ Reposicione fisicamente o robo, alinhe-o e libere a pista antes de pressionar
 
 ## Dados gerados
 
-Cada campanha e salva em
-`~/calibracao_feedforward_modubot/<nome>_<data-hora>/`:
+Cada campanha e salva em `<diretorio_de_saida>/<nome>_<data-hora>/`. No container
+atual, o diretorio de saida padrao e `/workspace/modubot_ws/calibration_data`:
 
 - `metadata.json`: parametros e plano completo;
 - `summary.csv`: media, mediana, desvio, extremos e assimetria por execucao;

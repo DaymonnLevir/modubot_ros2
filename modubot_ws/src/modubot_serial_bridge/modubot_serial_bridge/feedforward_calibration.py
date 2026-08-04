@@ -145,6 +145,16 @@ def parse_levels(text: str) -> List[float]:
     return levels
 
 
+def default_output_dir() -> Path:
+    configured = os.environ.get('MODUBOT_CALIBRATION_DIR')
+    if configured:
+        return Path(configured).expanduser()
+    docker_workspace = Path('/workspace/modubot_ws')
+    if docker_workspace.is_dir():
+        return docker_workspace / 'calibration_data'
+    return Path.home() / 'calibracao_feedforward_modubot'
+
+
 def command_pair(direction: str, mode: str, magnitude: float) -> Tuple[float, float]:
     signed = magnitude if direction == 'forward' else -magnitude
     if mode == 'both':
@@ -615,7 +625,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--output-dir',
         type=Path,
-        default=Path.home() / 'calibracao_feedforward_modubot',
+        default=default_output_dir(),
     )
     parser.add_argument('--campaign-name', default='ground_calibration')
     parser.add_argument(
