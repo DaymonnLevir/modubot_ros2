@@ -37,7 +37,7 @@ else:
 CALIBRATION_EXCEPTIONS = (RuntimeError,) + SERIAL_EXCEPTIONS
 
 
-SCRIPT_VERSION = '1.0.0'
+SCRIPT_VERSION = '1.1.0'
 DEFAULT_LEVELS = '0.05,0.075,0.10,0.125,0.15,0.175,0.20,0.25,0.30'
 
 SAMPLE_FIELDS = [
@@ -315,6 +315,19 @@ class Esp32Serial:
         self._rx_buffer.clear()
         self.serial.reset_input_buffer()
 
+    def wait_for_telemetry(self, timeout: float) -> Tuple[int, int, int]:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            for line in self.read_lines():
+                parsed = parse_odom_line(line)
+                if parsed is not None:
+                    return parsed
+            time.sleep(0.01)
+        raise RuntimeError(
+            'The serial port did not produce valid ESP32 odometry telemetry. '
+            'Confirm that the selected device is the ModuBot ESP32.'
+        )
+
     def close(self) -> None:
         self.stop()
         self.serial.close()
@@ -336,6 +349,20 @@ class CampaignRunner:
         self.summary_writer.writeheader()
         self.summary_stream.flush()
         self.link = Esp32Serial(args.port, args.baud, args.startup_wait)
+        print('Waiting for ESP32 odometry telemetry before enabling commands...')
+        try:
+            first_telemetry = self.link.wait_for_telemetry(
+                args.preflight_timeout
+            )
+        except RuntimeError:
+            self.link.close()
+            self.summary_stream.close()
+            raise
+        print(
+            'ESP32 telemetry confirmed: '
+            f'O {first_telemetry[0]} {first_telemetry[1]} '
+            f'{first_telemetry[2]}'
+        )
 
     def close(self) -> None:
         try:
@@ -610,6 +637,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--steady-end-margin', type=float, default=0.5)
     parser.add_argument('--send-rate', type=float, default=20.0)
     parser.add_argument('--odom-timeout', type=float, default=1.0)
+    parser.add_argument('--preflight-timeout', type=float, default=3.0)
     parser.add_argument('--startup-wait', type=float, default=2.0)
     parser.add_argument('--ticks-left', type=float, default=91.0)
     parser.add_argument('--ticks-right', type=float, default=91.0)
@@ -641,6 +669,7 @@ def validate_args(args: argparse.Namespace) -> None:
         'command_time': args.command_time,
         'send_rate': args.send_rate,
         'odom_timeout': args.odom_timeout,
+        'preflight_timeout': args.preflight_timeout,
         'ticks_left': args.ticks_left,
         'ticks_right': args.ticks_right,
         'wheel_radius_left': args.wheel_radius_left,

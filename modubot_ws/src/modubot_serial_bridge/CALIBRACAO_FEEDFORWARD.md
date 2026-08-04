@@ -107,6 +107,12 @@ O programa exige a palavra `INICIAR`. Antes de cada execucao:
 Reposicione fisicamente o robo, alinhe-o e libere a pista antes de pressionar
 `Enter`. Nao segure nem empurre o robo durante a medicao.
 
+Ao abrir a porta, o programa envia somente `S` e exige telemetria valida no
+formato `O <ticks_left> <ticks_right> <dt_ms>` antes de habilitar qualquer
+comando `V`. Se a porta for do LiDAR, se a ESP32 estiver desconectada ou se o
+firmware nao estiver emitindo odometria, a campanha e abortada sem iniciar um
+patamar. O tempo dessa verificacao pode ser alterado com `--preflight-timeout`.
+
 ## Dados gerados
 
 Cada campanha e salva em `<diretorio_de_saida>/<nome>_<data-hora>/`. No container
