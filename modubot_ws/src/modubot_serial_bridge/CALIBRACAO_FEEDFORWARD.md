@@ -107,6 +107,44 @@ O programa exige a palavra `INICIAR`. Antes de cada execucao:
 Reposicione fisicamente o robo, alinhe-o e libere a pista antes de pressionar
 `Enter`. Nao segure nem empurre o robo durante a medicao.
 
+### Modo automatico com o robo suspenso
+
+Quando o robo estiver mecanicamente preso em um suporte, com as duas rodas
+completamente livres e sem possibilidade de tocar o piso, use `--automatic`.
+Nesse modo nao ha confirmacao inicial nem pausa para `Enter`: depois de validar a
+telemetria da ESP32, o programa executa todo o plano. Os tempos de `pre-stop` e
+`post-stop` e o comando de freio `S` continuam ativos entre os patamares;
+`Ctrl+C` continua enviando o freio antes de encerrar.
+
+Uma varredura piloto de toda a faixa normalizada, nos dois sentidos, pode ser
+executada com:
+
+```bash
+ros2 run modubot_serial_bridge feedforward_calibration \
+  --port /dev/ttyUSB0 \
+  --automatic \
+  --direction both \
+  --mode both \
+  --levels 0.02,0.03,0.04,0.05,0.075,0.10,0.15,0.20,0.30,0.40,0.50,0.60,0.70,0.80,0.90,1.00 \
+  --repetitions 1 \
+  --pre-time 2 \
+  --command-time 6 \
+  --post-time 3 \
+  --steady-start 2 \
+  --steady-end-margin 0.5 \
+  --ticks-left 91 --ticks-right 91 \
+  --wheel-radius-left 0.078 --wheel-radius-right 0.078 \
+  --wheel-separation 0.225 \
+  --surface "suspended_wheels_free" \
+  --notes "No-load suspended sweep; do not use as the ground feedforward map" \
+  --campaign-name suspended_full_range
+```
+
+Essa campanha mede a curva sem carga e ajuda a localizar a velocidade maxima
+das rodas e possiveis saturacoes. Ela nao substitui a calibracao em solo: sem o
+peso, a resistencia ao rolamento e a interacao pneu-piso, as velocidades serao
+maiores e o mapa nao representa o comportamento do robo em navegacao.
+
 Ao abrir a porta, o programa envia somente `S` e exige telemetria valida no
 formato `O <ticks_left> <ticks_right> <dt_ms>` antes de habilitar qualquer
 comando `V`. Se a porta for do LiDAR, se a ESP32 estiver desconectada ou se o

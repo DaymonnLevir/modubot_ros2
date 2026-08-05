@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive ground-test runner for ModuBot feedforward calibration.
+"""Interactive or automatic runner for ModuBot feedforward calibration.
 
 This process is the sole owner of the ESP32 serial port during a campaign. It
 sends normalized left/right commands, parses ``O dL dR dt_ms`` telemetry, and
@@ -37,7 +37,7 @@ else:
 CALIBRATION_EXCEPTIONS = (RuntimeError,) + SERIAL_EXCEPTIONS
 
 
-SCRIPT_VERSION = '1.1.0'
+SCRIPT_VERSION = '1.2.0'
 DEFAULT_LEVELS = '0.05,0.075,0.10,0.125,0.15,0.175,0.20,0.25,0.30'
 
 SAMPLE_FIELDS = [
@@ -618,8 +618,8 @@ class CampaignRunner:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            'Run interactive ModuBot ground calibration while recording every '
-            'wheel-speed sample from the ESP32.'
+            'Run ModuBot calibration while recording every wheel-speed sample '
+            'from the ESP32.'
         )
     )
     parser.add_argument('--port', default='/dev/ttyUSB0')
@@ -656,6 +656,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=default_output_dir(),
     )
     parser.add_argument('--campaign-name', default='ground_calibration')
+    parser.add_argument(
+        '--automatic',
+        action='store_true',
+        help=(
+            'Run the complete plan without the initial confirmation or the '
+            'operator prompt before each run. Use only when the robot is '
+            'securely suspended and the wheels can rotate freely.'
+        ),
+    )
     parser.add_argument(
         '--dry-run', action='store_true', help='Print the plan without opening serial.'
     )
@@ -768,6 +777,33 @@ def print_summary(summary: Dict[str, object]) -> None:
         print(f'  Left/right asymmetry: {float(asymmetry):.2f}%')
 
 
+def confirm_campaign_start(args: argparse.Namespace) -> bool:
+    """Confirm an interactive campaign or acknowledge automatic operation."""
+    if args.automatic:
+        print(
+            'AUTOMATIC MODE: no operator prompts will be issued. The complete '
+            'plan will run after the ESP32 telemetry preflight succeeds.'
+        )
+        return True
+    confirmation = input('Type INICIAR to open the serial port: ').strip().upper()
+    return confirmation == 'INICIAR'
+
+
+def next_run_action(args: argparse.Namespace) -> str:
+    """Return the operator action, or run immediately in automatic mode."""
+    if args.automatic:
+        return 'run'
+    response = input(
+        'Reposition the robot and clear the area. '
+        'ENTER=run, s=skip, q=finish: '
+    ).strip().lower()
+    if response == 'q':
+        return 'finish'
+    if response == 's':
+        return 'skip'
+    return 'run'
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -785,8 +821,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         '\nSAFETY: clear the floor, keep a physical emergency stop accessible, '
         'and stop every other process that opens the ESP32 serial port.'
     )
-    confirmation = input('Type INICIAR to open the serial port: ').strip().upper()
-    if confirmation != 'INICIAR':
+    if not confirm_campaign_start(args):
         print('Campaign cancelled.')
         return 1
 
@@ -807,13 +842,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f'  DAC={dac}, nominal voltage={voltage:.3f} V, '
                 f'duration={args.command_time:.1f} s'
             )
-            response = input(
-                'Reposition the robot and clear the area. '
-                'ENTER=run, s=skip, q=finish: '
-            ).strip().lower()
-            if response == 'q':
+            action = next_run_action(args)
+            if action == 'finish':
                 break
-            if response == 's':
+            if action == 'skip':
                 runner.record_skipped(run)
                 continue
             summary = runner.execute(run)
