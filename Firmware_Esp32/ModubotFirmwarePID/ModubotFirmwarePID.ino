@@ -4,7 +4,7 @@
   Entradas:
     W <wL> <wR>              setpoints em rad/s (malha fechada)
     V <nL> <nR>              comandos normalizados (malha aberta)
-    S                        freio
+    S                        freio e limpa falha de feedback
     M <0|1>                  modo aberto/fechado
     K <kp> <ki> <kd>         ganhos do controlador
     F <kff> <dac_min>        parâmetros do feedforward
@@ -34,8 +34,8 @@
 #define DIR_L   19
 #define DIR_R   17
 #define BRAKE   16
-#define SPEED_L 35
-#define SPEED_R 34
+#define SPEED_L 34
+#define SPEED_R 35
 
 const uint32_t SER_BAUD              = 115200;
 const uint32_t CTRL_PERIOD_MS        = 20;
@@ -53,6 +53,9 @@ const int      DAC_SLEW_PER_CYCLE    = 12;
 const float    INTEG_MAX             = 255.0f;
 const float    DEAD_NORM             = 0.02f;
 const float    W_ABS_MAX             = 50.0f;
+const int      FEEDBACK_FAULT_DAC     = 40;
+const float    FEEDBACK_FAULT_W_MIN   = 0.2f;
+const uint32_t FEEDBACK_FAULT_MS      = 1200;
 
 const BaseType_t COMM_CORE       = 0;
 const BaseType_t CONTROL_CORE    = 1;
@@ -90,6 +93,7 @@ struct Wheel {
   bool reversing = false;
   bool pending_dir = true;
   uint32_t rev_start_ms = 0;
+  uint32_t no_feedback_since_ms = 0;
   int dac_applied = 0;
   int32_t ticks_signed = 0;
 };
@@ -151,6 +155,9 @@ struct StatePacket {
   uint32_t stack_high_watermark;
   uint32_t watchdog_trips;
   uint32_t rejected_commands;
+  uint32_t feedback_faults;
+  uint8_t feedback_fault_mask;
+  bool feedback_fault_latched;
 };
 
 Config cfg;
@@ -167,6 +174,9 @@ bool watchdog_tripped = true;
 uint32_t last_motion_ms = 0;
 uint32_t watchdog_trips = 0;
 uint32_t rejected_commands = 0;
+uint32_t feedback_faults = 0;
+uint8_t feedback_fault_mask = 0;
+bool feedback_fault_latched = false;
 
 char rxline[96];
 uint8_t rxlen = 0;
@@ -176,7 +186,7 @@ void IRAM_ATTR isrSpeedL() {
   uint32_t now = (uint32_t)esp_timer_get_time();
   portENTER_CRITICAL_ISR(&WL.mux);
   if (now - WL.last_edge_us >= GLITCH_US) {
-    WL.ticks++;
+    WL.ticks = WL.ticks + 1U;
     WL.last_edge_us = now;
   }
   portEXIT_CRITICAL_ISR(&WL.mux);
@@ -186,7 +196,7 @@ void IRAM_ATTR isrSpeedR() {
   uint32_t now = (uint32_t)esp_timer_get_time();
   portENTER_CRITICAL_ISR(&WR.mux);
   if (now - WR.last_edge_us >= GLITCH_US) {
-    WR.ticks++;
+    WR.ticks = WR.ticks + 1U;
     WR.last_edge_us = now;
   }
   portEXIT_CRITICAL_ISR(&WR.mux);
@@ -209,12 +219,20 @@ static void pidReset(Wheel &w) {
   w.u = 0.0f;
 }
 
+static void clearFeedbackFault() {
+  feedback_fault_latched = false;
+  WL.no_feedback_since_ms = 0;
+  WR.no_feedback_since_ms = 0;
+}
+
 static void stopAndBrake() {
   WL.setpoint = WR.setpoint = 0.0f;
   WL.norm_cmd = WR.norm_cmd = 0.0f;
   WL.reversing = WR.reversing = false;
   WL.pending_dir = WL.dir_front;
   WR.pending_dir = WR.dir_front;
+  WL.no_feedback_since_ms = 0;
+  WR.no_feedback_since_ms = 0;
   pidReset(WL);
   pidReset(WR);
   brakesSet(true);
@@ -269,6 +287,13 @@ static void sampleEncoder(Wheel &w, uint32_t now_ms) {
 }
 
 static float pidStep(Wheel &w, float dt) {
+  if (fabsf(w.setpoint) < 1e-4f) {
+    w.integ = 0.0f;
+    w.prev_meas = w.w_meas;
+    w.u = 0.0f;
+    return 0.0f;
+  }
+
   float error = w.setpoint - w.w_meas;
   float feedforward = 0.0f;
   if (fabsf(w.setpoint) > 1e-4f) {
@@ -281,10 +306,13 @@ static float pidStep(Wheel &w, float dt) {
       : 0.0f;
   w.prev_meas = w.w_meas;
 
+  float output_min = w.setpoint > 0.0f ? 0.0f : -255.0f;
+  float output_max = w.setpoint > 0.0f ? 255.0f : 0.0f;
+
   float predicted = feedforward + cfg.kp * error
       + w.integ - cfg.kd * derivative;
-  bool saturated_high = predicted >= 255.0f && error > 0.0f;
-  bool saturated_low = predicted <= -255.0f && error < 0.0f;
+  bool saturated_high = predicted >= output_max && error > 0.0f;
+  bool saturated_low = predicted <= output_min && error < 0.0f;
   if (!w.reversing && !saturated_high && !saturated_low) {
     w.integ += cfg.ki * error * dt;
     w.integ = constrain(w.integ, -INTEG_MAX, INTEG_MAX);
@@ -292,11 +320,7 @@ static float pidStep(Wheel &w, float dt) {
 
   float output = feedforward + cfg.kp * error
       + w.integ - cfg.kd * derivative;
-  output = constrain(output, -255.0f, 255.0f);
-  if (fabsf(w.setpoint) < 1e-4f && fabsf(w.w_meas) < 0.05f) {
-    w.integ = 0.0f;
-    output = 0.0f;
-  }
+  output = constrain(output, output_min, output_max);
   w.u = output;
   return output;
 }
@@ -310,7 +334,14 @@ static void writeDacRamped(Wheel &w, int dac) {
 }
 
 static void applyOutput(Wheel &w, float output, uint32_t now_ms) {
-  bool front = output >= 0.0f;
+  if (fabsf(output) < 0.5f) {
+    w.reversing = false;
+    w.pending_dir = w.dir_front;
+    writeDacRamped(w, 0);
+    return;
+  }
+
+  bool front = output > 0.0f;
   int dac = (int)constrain(fabsf(output), 0.0f, 255.0f);
 
   if (w.reversing) {
@@ -341,10 +372,41 @@ static void applyOutput(Wheel &w, float output, uint32_t now_ms) {
   writeDacRamped(w, dac);
 }
 
+static bool feedbackMissing(Wheel &w, uint32_t now_ms) {
+  bool monitor = cfg.closed_loop
+      && !brake_on
+      && !w.reversing
+      && fabsf(w.setpoint) >= FEEDBACK_FAULT_W_MIN
+      && w.dac_applied >= FEEDBACK_FAULT_DAC;
+  if (!monitor || fabsf(w.w_meas) >= 0.05f) {
+    w.no_feedback_since_ms = 0;
+    return false;
+  }
+  if (w.no_feedback_since_ms == 0) {
+    w.no_feedback_since_ms = now_ms;
+    return false;
+  }
+  return now_ms - w.no_feedback_since_ms >= FEEDBACK_FAULT_MS;
+}
+
+static void checkFeedbackFault(uint32_t now_ms) {
+  if (feedback_fault_latched) return;
+  uint8_t mask = 0;
+  if (feedbackMissing(WL, now_ms)) mask |= 0x01;
+  if (feedbackMissing(WR, now_ms)) mask |= 0x02;
+  if (!mask) return;
+
+  feedback_fault_mask = mask;
+  feedback_fault_latched = true;
+  feedback_faults++;
+  stopAndBrake();
+}
+
 static void applyConfig(const ConfigPacket &packet) {
   switch (packet.kind) {
     case CONFIG_MODE:
       cfg.closed_loop = packet.a != 0.0f;
+      clearFeedbackFault();
       stopAndBrake();
       break;
     case CONFIG_GAINS:
@@ -373,9 +435,12 @@ static void applyConfig(const ConfigPacket &packet) {
 
 static void applyMotion(const MotionPacket &packet) {
   if (packet.kind == MOTION_STOP) {
+    clearFeedbackFault();
     stopAndBrake();
     return;
   }
+
+  if (feedback_fault_latched) return;
 
   if (packet.kind == MOTION_CLOSED_LOOP) {
     if (!cfg.closed_loop) {
@@ -451,6 +516,9 @@ static void publishState(
   state.stack_high_watermark = uxTaskGetStackHighWaterMark(nullptr);
   state.watchdog_trips = watchdog_trips;
   state.rejected_commands = rejected_commands;
+  state.feedback_faults = feedback_faults;
+  state.feedback_fault_mask = feedback_fault_mask;
+  state.feedback_fault_latched = feedback_fault_latched;
   xQueueOverwrite(state_queue, &state);
 }
 
@@ -509,6 +577,7 @@ static void controlTask(void *) {
       }
       applyOutput(WL, output_left, now_ms);
       applyOutput(WR, output_right, now_ms);
+      checkFeedbackFault(now_ms);
     }
 
     publishState(now_ms, dt_us, min_us, max_us, sum_us, cycles, misses);
@@ -546,6 +615,10 @@ static void printConfig(const StatePacket &state) {
   Serial.printf("# freio=%s controle=Core%d/%luHz comunicação=Core%d\n",
                 state.brake_on ? "ON" : "OFF",
                 (int)CONTROL_CORE, 1000UL / CTRL_PERIOD_MS, (int)COMM_CORE);
+  Serial.printf("# falha_feedback=%s ultima_mascara=%u ocorrencias=%lu\n",
+                state.feedback_fault_latched ? "TRAVADA" : "OK",
+                (unsigned int)state.feedback_fault_mask,
+                (unsigned long)state.feedback_faults);
 }
 
 static void handleLine(
@@ -647,6 +720,7 @@ static void communicationTask(void *) {
   int32_t last_odom_right = 0;
   uint32_t last_watchdog_trips = 0;
   uint32_t last_rejected_commands = 0;
+  uint32_t last_feedback_faults = 0;
   StatePacket state = {};
   bool have_state = false;
 
@@ -672,6 +746,15 @@ static void communicationTask(void *) {
     if (have_state && state.rejected_commands != last_rejected_commands) {
       last_rejected_commands = state.rejected_commands;
       Serial.println(F("# comando incompatível com o modo de controle"));
+    }
+    if (have_state && state.feedback_faults != last_feedback_faults) {
+      last_feedback_faults = state.feedback_faults;
+      const char *side = state.feedback_fault_mask == 0x03
+          ? "L+R"
+          : (state.feedback_fault_mask == 0x01 ? "L" : "R");
+      Serial.printf(
+          "# FALHA_FEEDBACK_%s: DAC sem pulsos; freio acionado; envie S\n",
+          side);
     }
 
     if (have_state && now - last_odom_ms >= ODOM_PERIOD_MS) {

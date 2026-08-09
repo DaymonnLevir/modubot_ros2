@@ -41,7 +41,7 @@ usando só `ticks_per_rev`. Recalibrar o raio é mexer em um parâmetro do ROS, 
 |---|---|
 | `W <wL> <wR>` | **Comando principal.** Setpoint em **rad/s por roda** (malha fechada). |
 | `V <nL> <nR>` | Fração do atuador [-1..1] → DAC direto. **Só em malha aberta**; em malha fechada é recusado com aviso. |
-| `S` | Freio imediato + zera PI. |
+| `S` | Freio imediato, zera PI e limpa uma falha de feedback travada. |
 | `M <0\|1>` | 0 = malha aberta, 1 = malha fechada (**padrão: 1**). |
 | `K <kp> <ki> <kd>` | Ganhos PI — unidade: **DAC por rad/s**. |
 | `F <kff> <dac_min>` | Feedforward: `u_ff = sign(sp)·(dac_min + kff·|sp|)`. |
@@ -79,6 +79,12 @@ atrasava por causa do `delay(100)` da inversão de sentido).
   contagens fantasmas).
 - Estimador de velocidade por **período entre bordas** em vez de contagem por janela —
   é o que torna o PI viável a 50 Hz (contar pulsos em 20 ms dá degraus de dezenas de RPM).
+- Associação dos Halls corrigida experimentalmente: DAC esquerdo (GPIO 25) usa o sinal
+  do GPIO 34; DAC direito (GPIO 26) usa o sinal do GPIO 35.
+- O PI nunca usa reversão de sentido para corrigir sobrevelocidade: reduz a saída até
+  zero e aguarda a roda desacelerar. A direção só muda quando o setpoint muda de sinal.
+- Em malha fechada, DAC ≥ 40 por 1,2 s sem feedback trava uma falha, freia as duas
+  rodas e ignora novos movimentos até receber `S`.
 
 **Limitação mantida (hardware):** o pino S não informa sentido de giro; o sinal da
 velocidade e da odometria vem da direção comandada, como no firmware antigo.
@@ -269,4 +275,4 @@ carregam esse viés — vale reavaliar antes de reaproveitar números de campanh
 | DAC esquerdo / direito | 25 / 26 |
 | Direção esquerda / direita (open-drain) | 19 / 17 |
 | Freio (HIGH = ON) | 16 |
-| Pulso S esquerdo / direito | 35 / 34 |
+| Pulso S esquerdo / direito | 34 / 35 |
