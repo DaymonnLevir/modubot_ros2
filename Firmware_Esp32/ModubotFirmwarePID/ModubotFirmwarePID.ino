@@ -29,13 +29,13 @@
 #error "ModubotFirmwarePID requer uma ESP32 dual-core"
 #endif
 
-#define DAC_L   25
-#define DAC_R   26
-#define DIR_L   19
-#define DIR_R   17
+#define DAC_L   26
+#define DAC_R   25
+#define DIR_L   17
+#define DIR_R   19
 #define BRAKE   16
-#define SPEED_L 34
-#define SPEED_R 35
+#define SPEED_L 35
+#define SPEED_R 34
 
 const uint32_t SER_BAUD              = 115200;
 const uint32_t CTRL_PERIOD_MS        = 20;

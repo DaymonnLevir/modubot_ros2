@@ -1,10 +1,10 @@
 #include <Arduino.h>
 
 // ===== PINOS (ESP32 38 pinos) =====
-#define DAC_L   25   // esquerda (DAC1)
-#define DAC_R   26   // direita  (DAC2)
-#define DIR_L   19   // esquerda (OUTPUT_OPEN_DRAIN)
-#define DIR_R   17   // direita  (OUTPUT_OPEN_DRAIN)
+#define DAC_L   26   // esquerda (DAC2)
+#define DAC_R   25   // direita  (DAC1)
+#define DIR_L   17   // esquerda (OUTPUT_OPEN_DRAIN)
+#define DIR_R   19   // direita  (OUTPUT_OPEN_DRAIN)
 #define BRAKE   16   // HIGH = freio ON
 
 // Pinos de velocidade (saída S do driver -> conversor 5V->3V3 -> ESP32)

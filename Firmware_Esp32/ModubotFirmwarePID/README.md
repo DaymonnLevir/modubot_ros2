@@ -79,8 +79,8 @@ atrasava por causa do `delay(100)` da inversão de sentido).
   contagens fantasmas).
 - Estimador de velocidade por **período entre bordas** em vez de contagem por janela —
   é o que torna o PI viável a 50 Hz (contar pulsos em 20 ms dá degraus de dezenas de RPM).
-- Associação dos Halls corrigida experimentalmente: DAC esquerdo (GPIO 25) usa o sinal
-  do GPIO 34; DAC direito (GPIO 26) usa o sinal do GPIO 35.
+- Associação física confirmada com teste individual: roda esquerda usa DAC 26,
+  direção 17 e Hall 35; roda direita usa DAC 25, direção 19 e Hall 34.
 - O PI nunca usa reversão de sentido para corrigir sobrevelocidade: reduz a saída até
   zero e aguarda a roda desacelerar. A direção só muda quando o setpoint muda de sinal.
 - Em malha fechada, DAC ≥ 40 por 1,2 s sem feedback trava uma falha, freia as duas
@@ -268,11 +268,15 @@ Os arquivos antigos divergiam e **ambos estavam errados**: o bridge usava bitola
 executado; o do odom, a pose estimada. Ensaios anteriores de trajetória e giro
 carregam esse viés — vale reavaliar antes de reaproveitar números de campanhas antigas.
 
-## Pinagem (inalterada)
+## Pinagem física confirmada
 
 | Função | GPIO |
 |---|---|
-| DAC esquerdo / direito | 25 / 26 |
-| Direção esquerda / direita (open-drain) | 19 / 17 |
+| DAC esquerdo / direito | 26 / 25 |
+| Direção esquerda / direita (open-drain) | 17 / 19 |
 | Freio (HIGH = ON) | 16 |
-| Pulso S esquerdo / direito | 34 / 35 |
+| Pulso S esquerdo / direito | 35 / 34 |
+
+Firmwares e CSVs anteriores a esta correção usavam os rótulos `L` e `R` trocados
+fisicamente. Os valores numéricos continuam válidos, mas os nomes das rodas devem ser
+invertidos ao comparar campanhas antigas.
