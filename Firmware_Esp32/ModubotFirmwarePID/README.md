@@ -25,7 +25,7 @@ usando só `ticks_per_rev`. Recalibrar o raio é mexer em um parâmetro do ROS, 
 
 | Arquivo | Função |
 |---|---|
-| `ModubotFirmwarePID.ino` | Firmware (Arduino IDE, placa "ESP32 Dev Module") |
+| `ModubotFirmwarePID.ino` | Firmware multicore (Arduino IDE, placa "ESP32 Dev Module") |
 | `count_ticks.py` | Calibra `ticks_per_rev` contando pulsos de N voltas |
 | `estima_tau.py` | Extrai `a`, `v_f` e `τ` dos brutos de uma campanha de calibração |
 | `plot_pid.py` | Plot em tempo real + envio de comandos para sintonia |
@@ -55,6 +55,7 @@ usando só `ticks_per_rev`. Recalibrar o raio é mexer em um parâmetro do ROS, 
 |---|---|
 | `O <dL> <dR> <dt_ms>` | Odometria em **ticks crus**, publicada pelo bridge para o nó de odometria. |
 | `T <ms> <spL> <wL> <uL> <dacL> <spR> <wR> <uR> <dacR>` | Telemetria: setpoint e medida em **rad/s**, `u`/`dac` em contagens com sinal. |
+| `J <ms> <dt_us> <min_us> <max_us> <mean_us> <misses> <cycles> <stack>` | Temporização acumulada do controlador: período atual/mínimo/máximo/médio, ciclos com atraso > 1 ms e pilha livre. |
 | `# ...` | Mensagens humanas — os nós ROS ignoram (só fazem parse de `O`). |
 
 Por que `V` é recusado em malha fechada: se um bridge antigo mandar `V 0.100` achando
@@ -94,6 +95,42 @@ velocidade e da odometria vem da direção comandada, como no firmware antigo.
 
 Malha interna 2,5× mais rápida que o comando: cada setpoint é trabalhado por ~2–3 ciclos
 do PI antes do próximo chegar.
+
+## Execução multicore
+
+O firmware usa duas tarefas FreeRTOS fixadas explicitamente aos núcleos:
+
+| Core | Tarefa | Prioridade | Responsabilidade |
+|---|---|---:|---|
+| **Core 1** | `WheelControl` | 4 | amostrar Hall, estimar velocidades, executar PI e atualizar DAC a cada 20 ms |
+| **Core 0** | `Communication` | 2 | receber comandos, enviar odometria/telemetria e manter o protocolo serial ROS 2 |
+
+O Core 1 não imprime na serial, não interpreta texto e não espera a comunicação. Os
+comandos chegam por uma fila de tamanho 1 com semântica de **último valor**: se vários
+setpoints chegarem antes do próximo ciclo, o controlador aplica o mais recente, sem
+executar comandos antigos. Configurações usam outra fila; o estado sai por uma terceira
+fila também de tamanho 1. Os ticks publicados são acumulados no Core 1, portanto a
+sobrescrita de estados intermediários não perde odometria.
+
+A periodicidade é implementada com `vTaskDelayUntil`, e o `dt` real medido alimenta o
+integrador. O firmware não desliga os watchdogs da ESP32. O build é interrompido se a
+placa for configurada em modo unicore.
+
+### Verificar se o isolamento funcionou
+
+A linha `J` é emitida uma vez por segundo. Para gravá-la junto de um ensaio:
+
+```text
+python plot_pid.py COM5 --radius 0.078 --log degrau.csv --jitter-log jitter.csv
+```
+
+O esperado em regime é `mean_us` próximo de 20000, baixa diferença entre `min_us` e
+`max_us`, `deadline_misses` nulo ou muito pequeno e `stack_free_bytes` sempre positivo
+e estável. A comparação científica correta é executar o mesmo perfil de movimento com
+e sem tráfego de telemetria, reportando distribuição do período (não apenas a média),
+número de perdas de prazo e resposta do motor. A separação reduz interferência do
+parser/serial, mas não transforma a ESP32 em sistema sem jitter; interrupções e tarefas
+do sistema ainda podem preemptar a malha por intervalos curtos.
 
 ## Identificação
 

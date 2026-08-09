@@ -47,6 +47,10 @@ KEEPALIVE_S = 0.2
 BUF_LEN = 1500          # ~60 s a 25 Hz
 
 FIELDS = ["t_ms", "spL", "vL", "uL", "dacL", "spR", "vR", "uR", "dacR"]
+JITTER_FIELDS = [
+    "t_ms", "dt_us", "min_us", "max_us", "mean_us",
+    "deadline_misses", "cycles", "stack_free_bytes",
+]
 
 
 class Telemetry:
@@ -64,7 +68,21 @@ class Telemetry:
             return {f: list(d) for f, d in self.data.items()}
 
 
-def reader_thread(ser, tel, logf, stop):
+class JitterTelemetry:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.latest = None
+
+    def update(self, vals):
+        with self.lock:
+            self.latest = vals
+
+    def snapshot(self):
+        with self.lock:
+            return None if self.latest is None else list(self.latest)
+
+
+def reader_thread(ser, tel, jitter, logf, jitter_logf, stop):
     while not stop.is_set():
         try:
             raw = ser.readline()
@@ -85,6 +103,16 @@ def reader_thread(ser, tel, logf, stop):
                 tel.append(vals)
                 if logf:
                     logf.write(",".join(parts[1:]) + "\n")
+        elif line.startswith("J "):
+            parts = line.split()
+            if len(parts) == 9:
+                try:
+                    vals = [float(x) for x in parts[1:]]
+                except ValueError:
+                    continue
+                jitter.update(vals)
+                if jitter_logf:
+                    jitter_logf.write(",".join(parts[1:]) + "\n")
         elif line.startswith("#") or line.startswith("!"):
             print(line)          # mensagens do firmware
         # linhas 'O' (odometria) são ignoradas aqui
@@ -161,6 +189,8 @@ def main():
     ap.add_argument("--rads", action="store_true",
                     help="plota em rad/s (sem conversão)")
     ap.add_argument("--log", help="arquivo CSV para gravar a telemetria")
+    ap.add_argument("--jitter-log",
+                    help="CSV separado com período, atrasos e folga de pilha")
     args = ap.parse_args()
 
     if args.radius <= 0.0:
@@ -174,7 +204,13 @@ def main():
         logf = open(args.log, "w", buffering=1)
         logf.write(",".join(FIELDS) + "\n")
 
+    jitter_logf = None
+    if args.jitter_log:
+        jitter_logf = open(args.jitter_log, "w", buffering=1)
+        jitter_logf.write(",".join(JITTER_FIELDS) + "\n")
+
     tel = Telemetry()
+    jitter = JitterTelemetry()
     stop = threading.Event()
     cmdr = Commander(ser, args.radius)
 
@@ -182,7 +218,11 @@ def main():
     scale = 1.0 if args.rads else args.radius
     unit = "rad/s" if args.rads else "m/s"
 
-    threading.Thread(target=reader_thread, args=(ser, tel, logf, stop), daemon=True).start()
+    threading.Thread(
+        target=reader_thread,
+        args=(ser, tel, jitter, logf, jitter_logf, stop),
+        daemon=True,
+    ).start()
     threading.Thread(target=cmdr.keepalive_loop, args=(stop,), daemon=True).start()
     threading.Thread(target=stdin_thread, args=(cmdr, stop), daemon=True).start()
 
@@ -191,6 +231,8 @@ def main():
 
     fig, (axL, axR, axU) = plt.subplots(3, 1, sharex=True, figsize=(10, 8))
     fig.canvas.manager.set_window_title("ModuBot PI")
+    jitter_text = fig.text(0.5, 0.985, "jitter: aguardando dados J",
+                           ha="center", va="top", fontsize=8)
 
     lnSpL, = axL.plot([], [], "k--", label="setpoint L")
     lnVL,  = axL.plot([], [], "b-",  label="medido L")
@@ -227,6 +269,15 @@ def main():
         for ax in (axL, axR, axU):
             ax.relim()
             ax.autoscale_view()
+        j = jitter.snapshot()
+        if j:
+            jitter_text.set_text(
+                "controle: dt={:.3f} ms | min={:.3f} | max={:.3f} | "
+                "média={:.3f} | perdas={} / {} | pilha livre={} B".format(
+                    j[1] / 1000.0, j[2] / 1000.0, j[3] / 1000.0,
+                    j[4] / 1000.0, int(j[5]), int(j[6]), int(j[7])
+                )
+            )
         if stop.is_set():
             plt.close(fig)
         return []
@@ -245,6 +296,8 @@ def main():
             pass
         if logf:
             logf.close()
+        if jitter_logf:
+            jitter_logf.close()
         print("encerrado (freio enviado).")
 
 

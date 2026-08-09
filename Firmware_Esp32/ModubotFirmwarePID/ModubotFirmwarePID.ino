@@ -1,5 +1,5 @@
 /*
-  ModubotFirmwarePID — controle PI de velocidade das rodas
+  ModubotFirmwarePID — controle PI multicore das rodas
 
   Entradas:
     W <wL> <wR>              setpoints em rad/s (malha fechada)
@@ -15,13 +15,20 @@
   Saídas:
     O <dL> <dR> <dt_ms>      odometria em ticks
     T <ms> <spL> <wL> <uL> <dacL> <spR> <wR> <uR> <dacR>
+    J <ms> <dt_us> <min_us> <max_us> <mean_us> <misses> <cycles> <stack>
     # ...                    mensagens de estado
 */
 
 #include <Arduino.h>
 #include <ctype.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 
-// Pinos
+#if CONFIG_FREERTOS_UNICORE
+#error "ModubotFirmwarePID requer uma ESP32 dual-core"
+#endif
+
 #define DAC_L   25
 #define DAC_R   26
 #define DIR_L   19
@@ -30,10 +37,12 @@
 #define SPEED_L 35
 #define SPEED_R 34
 
-// Temporização e limites
 const uint32_t SER_BAUD              = 115200;
 const uint32_t CTRL_PERIOD_MS        = 20;
+const uint32_t CTRL_PERIOD_US        = CTRL_PERIOD_MS * 1000;
+const uint32_t JITTER_TOLERANCE_US   = 1000;
 const uint32_t ODOM_PERIOD_MS        = 50;
+const uint32_t JITTER_REPORT_MS      = 1000;
 const uint32_t WATCHDOG_MS           = 600;
 const uint16_t T_DIR_SETTLE_MS       = 100;
 const uint16_t T_DIR_MAX_MS          = 500;
@@ -45,22 +54,25 @@ const float    INTEG_MAX             = 255.0f;
 const float    DEAD_NORM             = 0.02f;
 const float    W_ABS_MAX             = 50.0f;
 
-// Controle PI + feedforward
+const BaseType_t COMM_CORE       = 0;
+const BaseType_t CONTROL_CORE    = 1;
+const UBaseType_t COMM_PRIORITY  = 2;
+const UBaseType_t CTRL_PRIORITY  = 4;
+const uint32_t COMM_STACK_BYTES  = 6144;
+const uint32_t CTRL_STACK_BYTES  = 4096;
+
 struct Config {
-  float kp  = 6.0f;
-  float ki  = 30.0f;
-  float kd  = 0.0f;
+  float kp = 6.0f;
+  float ki = 30.0f;
+  float kd = 0.0f;
   float kff = 5.9f;
   float dac_min = 7.0f;
-  bool  closed_loop = true;
-  bool  telem_on = false;
-  uint32_t telem_period_ms = 40;
+  bool closed_loop = true;
 };
-Config cfg;
 
 struct Wheel {
   uint8_t pin_dac, pin_dir;
-  float   ticks_per_rev = 91.0f;
+  float ticks_per_rev = 91.0f;
   portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
   volatile uint32_t ticks = 0;
   volatile uint32_t last_edge_us = 0;
@@ -80,33 +92,103 @@ struct Wheel {
   uint32_t rev_start_ms = 0;
   int dac_applied = 0;
   int32_t ticks_signed = 0;
-  int32_t odo_last_sent = 0;
 };
 
+enum MotionKind : uint8_t {
+  MOTION_STOP,
+  MOTION_CLOSED_LOOP,
+  MOTION_OPEN_LOOP
+};
+
+struct MotionPacket {
+  MotionKind kind;
+  float left;
+  float right;
+  uint32_t received_ms;
+};
+
+enum ConfigKind : uint8_t {
+  CONFIG_MODE,
+  CONFIG_GAINS,
+  CONFIG_FEEDFORWARD,
+  CONFIG_TICKS
+};
+
+struct ConfigPacket {
+  ConfigKind kind;
+  float a;
+  float b;
+  float c;
+};
+
+struct StatePacket {
+  uint32_t timestamp_ms;
+  int32_t ticks_left;
+  int32_t ticks_right;
+  float setpoint_left;
+  float measured_left;
+  float output_left;
+  int dac_left;
+  float setpoint_right;
+  float measured_right;
+  float output_right;
+  int dac_right;
+  float kp;
+  float ki;
+  float kd;
+  float kff;
+  float dac_min;
+  float ticks_per_rev_left;
+  float ticks_per_rev_right;
+  bool closed_loop;
+  bool brake_on;
+  uint32_t control_dt_us;
+  uint32_t control_min_us;
+  uint32_t control_max_us;
+  float control_mean_us;
+  uint32_t deadline_misses;
+  uint32_t control_cycles;
+  uint32_t stack_high_watermark;
+  uint32_t watchdog_trips;
+  uint32_t rejected_commands;
+};
+
+Config cfg;
 Wheel WL, WR;
 
-bool     brake_on = true;
-bool     wdt_tripped = false;
-uint32_t last_cmd_ms = 0;
-uint32_t last_ctrl_ms = 0;
-uint32_t last_odom_ms = 0;
-uint32_t last_telem_ms = 0;
-uint32_t last_vwarn_ms = 0;
+QueueHandle_t motion_queue = nullptr;
+QueueHandle_t config_queue = nullptr;
+QueueHandle_t state_queue = nullptr;
+TaskHandle_t control_task_handle = nullptr;
+TaskHandle_t communication_task_handle = nullptr;
 
-char     rxline[80];
-uint8_t  rxlen = 0;
+bool brake_on = true;
+bool watchdog_tripped = true;
+uint32_t last_motion_ms = 0;
+uint32_t watchdog_trips = 0;
+uint32_t rejected_commands = 0;
 
-// Pulsos de velocidade
+char rxline[96];
+uint8_t rxlen = 0;
+bool discard_rx_line = false;
+
 void IRAM_ATTR isrSpeedL() {
   uint32_t now = (uint32_t)esp_timer_get_time();
   portENTER_CRITICAL_ISR(&WL.mux);
-  if (now - WL.last_edge_us >= GLITCH_US) { WL.ticks++; WL.last_edge_us = now; }
+  if (now - WL.last_edge_us >= GLITCH_US) {
+    WL.ticks++;
+    WL.last_edge_us = now;
+  }
   portEXIT_CRITICAL_ISR(&WL.mux);
 }
+
 void IRAM_ATTR isrSpeedR() {
   uint32_t now = (uint32_t)esp_timer_get_time();
   portENTER_CRITICAL_ISR(&WR.mux);
-  if (now - WR.last_edge_us >= GLITCH_US) { WR.ticks++; WR.last_edge_us = now; }
+  if (now - WR.last_edge_us >= GLITCH_US) {
+    WR.ticks++;
+    WR.last_edge_us = now;
+  }
   portEXIT_CRITICAL_ISR(&WR.mux);
 }
 
@@ -114,8 +196,10 @@ static inline void brakesSet(bool on) {
   brake_on = on;
   digitalWrite(BRAKE, on ? HIGH : LOW);
   if (on) {
-    dacWrite(DAC_L, 0);  WL.dac_applied = 0;
-    dacWrite(DAC_R, 0);  WR.dac_applied = 0;
+    dacWrite(DAC_L, 0);
+    dacWrite(DAC_R, 0);
+    WL.dac_applied = 0;
+    WR.dac_applied = 0;
   }
 }
 
@@ -128,10 +212,22 @@ static void pidReset(Wheel &w) {
 static void stopAndBrake() {
   WL.setpoint = WR.setpoint = 0.0f;
   WL.norm_cmd = WR.norm_cmd = 0.0f;
+  WL.reversing = WR.reversing = false;
+  WL.pending_dir = WL.dir_front;
+  WR.pending_dir = WR.dir_front;
   pidReset(WL);
   pidReset(WR);
   brakesSet(true);
-  wdt_tripped = true;
+  watchdog_tripped = true;
+}
+
+static void releaseIfBraked() {
+  if (brake_on) {
+    brakesSet(false);
+    pidReset(WL);
+    pidReset(WR);
+  }
+  watchdog_tripped = false;
 }
 
 static void setWheelTarget(Wheel &w, float target) {
@@ -142,81 +238,80 @@ static void setWheelTarget(Wheel &w, float target) {
   w.setpoint = target;
 }
 
-// Velocidade angular pelo período entre bordas
 static void sampleEncoder(Wheel &w, uint32_t now_ms) {
-  uint32_t t, e;
+  uint32_t ticks, edge_us;
   portENTER_CRITICAL(&w.mux);
-  t = w.ticks;
-  e = w.last_edge_us;
+  ticks = w.ticks;
+  edge_us = w.last_edge_us;
   portEXIT_CRITICAL(&w.mux);
 
-  uint32_t dticks = t - w.prev_ticks;
-  if (dticks > 0) {
+  uint32_t delta_ticks = ticks - w.prev_ticks;
+  if (delta_ticks > 0) {
     if (w.prev_edge_us != 0) {
-      float dte = (float)(e - w.prev_edge_us) * 1e-6f;
-      if (dte > 1e-5f) {
-        float raw = (float)dticks / dte;
+      float edge_period = (float)(edge_us - w.prev_edge_us) * 1e-6f;
+      if (edge_period > 1e-5f) {
+        float raw = (float)delta_ticks / edge_period;
         w.speed_filt += SPEED_ALPHA * (raw - w.speed_filt);
       }
     }
-    w.prev_ticks = t;
-    w.prev_edge_us = e;
+    w.prev_ticks = ticks;
+    w.prev_edge_us = edge_us;
     w.last_tick_ms = now_ms;
   } else if (now_ms - w.last_tick_ms > SPEED_ZERO_TIMEOUT_MS) {
     w.speed_filt = 0.0f;
   }
 
-  float wr = w.speed_filt / w.ticks_per_rev * (2.0f * PI);
-  w.w_meas = w.dir_front ? wr : -wr;
-
-  w.ticks_signed += (w.dir_front ? (int32_t)dticks : -(int32_t)dticks);
+  float magnitude = w.speed_filt / w.ticks_per_rev * (2.0f * PI);
+  w.w_meas = w.dir_front ? magnitude : -magnitude;
+  w.ticks_signed += w.dir_front
+      ? (int32_t)delta_ticks
+      : -(int32_t)delta_ticks;
 }
 
-// Controlador PI; kd permanece disponível para ensaios
 static float pidStep(Wheel &w, float dt) {
-  float sp   = w.setpoint;
-  float meas = w.w_meas;
-  float err  = sp - meas;
-
-  float u_ff = 0.0f;
-  if (fabsf(sp) > 1e-4f) {
-    u_ff = cfg.dac_min + cfg.kff * fabsf(sp);
-    if (sp < 0.0f) u_ff = -u_ff;
+  float error = w.setpoint - w.w_meas;
+  float feedforward = 0.0f;
+  if (fabsf(w.setpoint) > 1e-4f) {
+    feedforward = cfg.dac_min + cfg.kff * fabsf(w.setpoint);
+    if (w.setpoint < 0.0f) feedforward = -feedforward;
   }
 
-  float dmeas = (dt > 1e-4f) ? (meas - w.prev_meas) / dt : 0.0f;
-  w.prev_meas = meas;
+  float derivative = dt > 1e-4f
+      ? (w.w_meas - w.prev_meas) / dt
+      : 0.0f;
+  w.prev_meas = w.w_meas;
 
-  float u_pred = u_ff + cfg.kp * err + w.integ - cfg.kd * dmeas;
-  bool sat_hi = (u_pred >=  255.0f && err > 0.0f);
-  bool sat_lo = (u_pred <= -255.0f && err < 0.0f);
-  if (!w.reversing && !sat_hi && !sat_lo) {
-    w.integ += cfg.ki * err * dt;
+  float predicted = feedforward + cfg.kp * error
+      + w.integ - cfg.kd * derivative;
+  bool saturated_high = predicted >= 255.0f && error > 0.0f;
+  bool saturated_low = predicted <= -255.0f && error < 0.0f;
+  if (!w.reversing && !saturated_high && !saturated_low) {
+    w.integ += cfg.ki * error * dt;
     w.integ = constrain(w.integ, -INTEG_MAX, INTEG_MAX);
   }
 
-  float u = u_ff + cfg.kp * err + w.integ - cfg.kd * dmeas;
-  u = constrain(u, -255.0f, 255.0f);
-
-  if (fabsf(sp) < 1e-4f && fabsf(meas) < 0.05f) {
+  float output = feedforward + cfg.kp * error
+      + w.integ - cfg.kd * derivative;
+  output = constrain(output, -255.0f, 255.0f);
+  if (fabsf(w.setpoint) < 1e-4f && fabsf(w.w_meas) < 0.05f) {
     w.integ = 0.0f;
-    u = 0.0f;
+    output = 0.0f;
   }
-  w.u = u;
-  return u;
+  w.u = output;
+  return output;
 }
 
-// Atuação com rampa e inversão não bloqueante
 static void writeDacRamped(Wheel &w, int dac) {
-  if (dac > w.dac_applied + DAC_SLEW_PER_CYCLE)
+  if (dac > w.dac_applied + DAC_SLEW_PER_CYCLE) {
     dac = w.dac_applied + DAC_SLEW_PER_CYCLE;
+  }
   w.dac_applied = dac;
   dacWrite(w.pin_dac, (uint8_t)dac);
 }
 
-static void applyOutput(Wheel &w, float u, uint32_t now_ms) {
-  bool wantFront = (u >= 0.0f);
-  int  dac = (int)constrain(fabsf(u), 0.0f, 255.0f);
+static void applyOutput(Wheel &w, float output, uint32_t now_ms) {
+  bool front = output >= 0.0f;
+  int dac = (int)constrain(fabsf(output), 0.0f, 255.0f);
 
   if (w.reversing) {
     uint32_t elapsed = now_ms - w.rev_start_ms;
@@ -231,168 +326,391 @@ static void applyOutput(Wheel &w, float u, uint32_t now_ms) {
     w.reversing = false;
   }
 
-  if (wantFront != w.dir_front) {
+  if (front != w.dir_front) {
     if (w.dac_applied > 0 || fabsf(w.w_meas) > 0.2f) {
       w.dac_applied = 0;
       dacWrite(w.pin_dac, 0);
-      w.pending_dir = wantFront;
+      w.pending_dir = front;
       w.reversing = true;
       w.rev_start_ms = now_ms;
       return;
     }
-    w.dir_front = wantFront;
+    w.dir_front = front;
     digitalWrite(w.pin_dir, w.dir_front ? HIGH : LOW);
   }
   writeDacRamped(w, dac);
 }
 
-static bool parse2f(char *p, float &a, float &b) {
-  char *q;
-  a = strtof(p, &q); if (q == p) return false; p = q;
-  b = strtof(p, &q); if (q == p) return false;
-  return true;
-}
-
-static void printConfig() {
-  Serial.printf("# modo=%s  kp=%.3f ki=%.3f kd=%.3f\n",
-                cfg.closed_loop ? "FECHADA" : "ABERTA", cfg.kp, cfg.ki, cfg.kd);
-  Serial.printf("# kff=%.3f dac_min=%.1f  ticks_rev L=%.1f R=%.1f\n",
-                cfg.kff, cfg.dac_min, WL.ticks_per_rev, WR.ticks_per_rev);
-  Serial.printf("# telemetria=%s (%lu ms)  freio=%s\n",
-                cfg.telem_on ? "ON" : "OFF", (unsigned long)cfg.telem_period_ms,
-                brake_on ? "ON" : "OFF");
-}
-
-static void releaseIfBraked() {
-  if (brake_on) { brakesSet(false); pidReset(WL); pidReset(WR); }
-  wdt_tripped = false;
-}
-
-static void handleLine(char *s, uint32_t now_ms) {
-  while (*s == ' ') s++;
-  if (!*s) return;
-  char cmd = toupper((unsigned char)*s);
-  char *p = s + 1;
-  float a, b, c;
-  char *q;
-  bool motion_command = false;
-
-  switch (cmd) {
-    case 'W':
-      if (parse2f(p, a, b)) {
-        if (!cfg.closed_loop) {
-          Serial.println(F("# W ignorado: malha aberta (use M 1)"));
-          break;
-        }
-        a = constrain(a, -W_ABS_MAX, W_ABS_MAX);
-        b = constrain(b, -W_ABS_MAX, W_ABS_MAX);
-        if (fabsf(a) < 1e-4f && fabsf(b) < 1e-4f) {
-          stopAndBrake();
-        } else {
-          setWheelTarget(WL, a);
-          setWheelTarget(WR, b);
-          releaseIfBraked();
-        }
-        motion_command = true;
-      }
-      break;
-
-    case 'V':
-      if (parse2f(p, a, b)) {
-        if (cfg.closed_loop) {
-          if (now_ms - last_vwarn_ms > 2000) {
-            last_vwarn_ms = now_ms;
-            Serial.println(F("# V ignorado em malha fechada: use 'W <radL> <radR>' (rad/s) ou 'M 0'"));
-          }
-          break;
-        }
-        a = constrain(a, -1.0f, 1.0f);
-        b = constrain(b, -1.0f, 1.0f);
-        WL.norm_cmd = (fabsf(a) < DEAD_NORM) ? 0.0f : a;
-        WR.norm_cmd = (fabsf(b) < DEAD_NORM) ? 0.0f : b;
-        if (WL.norm_cmd == 0.0f && WR.norm_cmd == 0.0f) {
-          stopAndBrake();
-        } else {
-          releaseIfBraked();
-        }
-        motion_command = true;
-      }
-      break;
-
-    case 'S':
+static void applyConfig(const ConfigPacket &packet) {
+  switch (packet.kind) {
+    case CONFIG_MODE:
+      cfg.closed_loop = packet.a != 0.0f;
       stopAndBrake();
       break;
+    case CONFIG_GAINS:
+      if (packet.a >= 0.0f && packet.b >= 0.0f && packet.c >= 0.0f) {
+        cfg.kp = packet.a;
+        cfg.ki = packet.b;
+        cfg.kd = packet.c;
+        pidReset(WL);
+        pidReset(WR);
+      }
+      break;
+    case CONFIG_FEEDFORWARD:
+      if (packet.a >= 0.0f && packet.b >= 0.0f && packet.b <= 255.0f) {
+        cfg.kff = packet.a;
+        cfg.dac_min = packet.b;
+      }
+      break;
+    case CONFIG_TICKS:
+      if (packet.a > 0.0f && packet.b > 0.0f) {
+        WL.ticks_per_rev = packet.a;
+        WR.ticks_per_rev = packet.b;
+      }
+      break;
+  }
+}
 
+static void applyMotion(const MotionPacket &packet) {
+  if (packet.kind == MOTION_STOP) {
+    stopAndBrake();
+    return;
+  }
+
+  if (packet.kind == MOTION_CLOSED_LOOP) {
+    if (!cfg.closed_loop) {
+      rejected_commands++;
+      stopAndBrake();
+      return;
+    }
+    float left = constrain(packet.left, -W_ABS_MAX, W_ABS_MAX);
+    float right = constrain(packet.right, -W_ABS_MAX, W_ABS_MAX);
+    last_motion_ms = packet.received_ms;
+    if (fabsf(left) < 1e-4f && fabsf(right) < 1e-4f) {
+      stopAndBrake();
+      return;
+    }
+    setWheelTarget(WL, left);
+    setWheelTarget(WR, right);
+    releaseIfBraked();
+    return;
+  }
+
+  if (cfg.closed_loop) {
+    rejected_commands++;
+    stopAndBrake();
+    return;
+  }
+  float left = constrain(packet.left, -1.0f, 1.0f);
+  float right = constrain(packet.right, -1.0f, 1.0f);
+  WL.norm_cmd = fabsf(left) < DEAD_NORM ? 0.0f : left;
+  WR.norm_cmd = fabsf(right) < DEAD_NORM ? 0.0f : right;
+  last_motion_ms = packet.received_ms;
+  if (WL.norm_cmd == 0.0f && WR.norm_cmd == 0.0f) {
+    stopAndBrake();
+  } else {
+    releaseIfBraked();
+  }
+}
+
+static void publishState(
+    uint32_t now_ms,
+    uint32_t dt_us,
+    uint32_t min_us,
+    uint32_t max_us,
+    uint64_t sum_us,
+    uint32_t cycles,
+    uint32_t misses) {
+  StatePacket state = {};
+  state.timestamp_ms = now_ms;
+  state.ticks_left = WL.ticks_signed;
+  state.ticks_right = WR.ticks_signed;
+  state.setpoint_left = WL.setpoint;
+  state.measured_left = WL.w_meas;
+  state.output_left = WL.u;
+  state.dac_left = WL.dir_front ? WL.dac_applied : -WL.dac_applied;
+  state.setpoint_right = WR.setpoint;
+  state.measured_right = WR.w_meas;
+  state.output_right = WR.u;
+  state.dac_right = WR.dir_front ? WR.dac_applied : -WR.dac_applied;
+  state.kp = cfg.kp;
+  state.ki = cfg.ki;
+  state.kd = cfg.kd;
+  state.kff = cfg.kff;
+  state.dac_min = cfg.dac_min;
+  state.ticks_per_rev_left = WL.ticks_per_rev;
+  state.ticks_per_rev_right = WR.ticks_per_rev;
+  state.closed_loop = cfg.closed_loop;
+  state.brake_on = brake_on;
+  state.control_dt_us = dt_us;
+  state.control_min_us = min_us;
+  state.control_max_us = max_us;
+  state.control_mean_us = cycles > 0 ? (float)sum_us / cycles : 0.0f;
+  state.deadline_misses = misses;
+  state.control_cycles = cycles;
+  state.stack_high_watermark = uxTaskGetStackHighWaterMark(nullptr);
+  state.watchdog_trips = watchdog_trips;
+  state.rejected_commands = rejected_commands;
+  xQueueOverwrite(state_queue, &state);
+}
+
+static void controlTask(void *) {
+  TickType_t last_wake = xTaskGetTickCount();
+  uint64_t last_cycle_us = esp_timer_get_time();
+  uint64_t sum_us = 0;
+  uint32_t min_us = UINT32_MAX;
+  uint32_t max_us = 0;
+  uint32_t cycles = 0;
+  uint32_t misses = 0;
+
+  for (;;) {
+    vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(CTRL_PERIOD_MS));
+    uint64_t now_us = esp_timer_get_time();
+    uint32_t dt_us = (uint32_t)(now_us - last_cycle_us);
+    last_cycle_us = now_us;
+    uint32_t now_ms = millis();
+
+    cycles++;
+    sum_us += dt_us;
+    if (dt_us < min_us) min_us = dt_us;
+    if (dt_us > max_us) max_us = dt_us;
+    if (dt_us > CTRL_PERIOD_US + JITTER_TOLERANCE_US) misses++;
+
+    ConfigPacket config_packet;
+    while (xQueueReceive(config_queue, &config_packet, 0) == pdPASS) {
+      applyConfig(config_packet);
+    }
+
+    MotionPacket motion_packet;
+    if (xQueueReceive(motion_queue, &motion_packet, 0) == pdPASS) {
+      applyMotion(motion_packet);
+    }
+
+    if (!watchdog_tripped && now_ms - last_motion_ms > WATCHDOG_MS) {
+      watchdog_trips++;
+      stopAndBrake();
+    }
+
+    sampleEncoder(WL, now_ms);
+    sampleEncoder(WR, now_ms);
+
+    if (!brake_on) {
+      float output_left;
+      float output_right;
+      if (cfg.closed_loop) {
+        float dt = dt_us > 100000 ? 0.02f : dt_us * 1e-6f;
+        output_left = pidStep(WL, dt);
+        output_right = pidStep(WR, dt);
+      } else {
+        output_left = WL.norm_cmd * 255.0f;
+        output_right = WR.norm_cmd * 255.0f;
+        WL.u = output_left;
+        WR.u = output_right;
+      }
+      applyOutput(WL, output_left, now_ms);
+      applyOutput(WR, output_right, now_ms);
+    }
+
+    publishState(now_ms, dt_us, min_us, max_us, sum_us, cycles, misses);
+  }
+}
+
+static bool parse2f(char *text, float &a, float &b) {
+  char *end;
+  a = strtof(text, &end);
+  if (end == text) return false;
+  text = end;
+  b = strtof(text, &end);
+  return end != text;
+}
+
+static bool enqueueConfig(ConfigKind kind, float a, float b, float c) {
+  ConfigPacket packet = {kind, a, b, c};
+  if (xQueueSend(config_queue, &packet, 0) == pdPASS) return true;
+  Serial.println(F("# fila de configuração cheia"));
+  return false;
+}
+
+static void enqueueMotion(MotionKind kind, float left, float right) {
+  MotionPacket packet = {kind, left, right, millis()};
+  xQueueOverwrite(motion_queue, &packet);
+}
+
+static void printConfig(const StatePacket &state) {
+  Serial.printf("# modo=%s kp=%.3f ki=%.3f kd=%.3f\n",
+                state.closed_loop ? "FECHADA" : "ABERTA",
+                state.kp, state.ki, state.kd);
+  Serial.printf("# kff=%.3f dac_min=%.1f ticks_rev L=%.1f R=%.1f\n",
+                state.kff, state.dac_min,
+                state.ticks_per_rev_left, state.ticks_per_rev_right);
+  Serial.printf("# freio=%s controle=Core%d/%luHz comunicação=Core%d\n",
+                state.brake_on ? "ON" : "OFF",
+                (int)CONTROL_CORE, 1000UL / CTRL_PERIOD_MS, (int)COMM_CORE);
+}
+
+static void handleLine(
+    char *line,
+    bool &telemetry_on,
+    uint32_t &telemetry_period_ms,
+    bool &print_config_pending) {
+  while (*line == ' ') line++;
+  if (!*line) return;
+  char command = toupper((unsigned char)*line);
+  char *text = line + 1;
+  float a, b, c;
+  char *end;
+
+  switch (command) {
+    case 'W':
+      if (parse2f(text, a, b)) enqueueMotion(MOTION_CLOSED_LOOP, a, b);
+      break;
+    case 'V':
+      if (parse2f(text, a, b)) enqueueMotion(MOTION_OPEN_LOOP, a, b);
+      break;
+    case 'S':
+      enqueueMotion(MOTION_STOP, 0.0f, 0.0f);
+      break;
     case 'M':
-      a = strtof(p, &q);
-      if (q != p) {
-        cfg.closed_loop = (a != 0.0f);
-        stopAndBrake();
-        Serial.printf("# malha %s\n", cfg.closed_loop ? "FECHADA" : "ABERTA");
+      a = strtof(text, &end);
+      if (end != text) {
+        enqueueMotion(MOTION_STOP, 0.0f, 0.0f);
+        enqueueConfig(CONFIG_MODE, a, 0.0f, 0.0f);
       }
       break;
-
     case 'K':
-      a = strtof(p, &q); if (q == p) break; p = q;
-      b = strtof(p, &q); if (q == p) break; p = q;
-      c = strtof(p, &q); if (q == p) break;
-      if (a >= 0.0f && b >= 0.0f && c >= 0.0f) {
-        cfg.kp = a; cfg.ki = b; cfg.kd = c;
-        pidReset(WL); pidReset(WR);
-        Serial.printf("# K kp=%.3f ki=%.3f kd=%.3f (DAC por rad/s)\n", cfg.kp, cfg.ki, cfg.kd);
-      }
+      a = strtof(text, &end); if (end == text) break; text = end;
+      b = strtof(text, &end); if (end == text) break; text = end;
+      c = strtof(text, &end); if (end == text) break;
+      enqueueConfig(CONFIG_GAINS, a, b, c);
       break;
-
     case 'F':
-      if (parse2f(p, a, b) && a >= 0.0f && b >= 0.0f && b <= 255.0f) {
-        cfg.kff = a; cfg.dac_min = b;
-        Serial.printf("# F kff=%.3f dac_min=%.1f\n", cfg.kff, cfg.dac_min);
+      if (parse2f(text, a, b)) {
+        enqueueConfig(CONFIG_FEEDFORWARD, a, b, 0.0f);
       }
       break;
-
     case 'C':
-      if (parse2f(p, a, b) && a > 0.0f && b > 0.0f) {
-        WL.ticks_per_rev = a;
-        WR.ticks_per_rev = b;
-        Serial.printf("# C ticks_rev L=%.1f R=%.1f\n", a, b);
-      }
+      if (parse2f(text, a, b)) enqueueConfig(CONFIG_TICKS, a, b, 0.0f);
       break;
-
     case 'P':
-      a = strtof(p, &q);
-      if (q != p) {
-        cfg.telem_on = (a != 0.0f);
-        p = q;
-        b = strtof(p, &q);
-        if (q != p && b >= 1.0f && b <= 100.0f)
-          cfg.telem_period_ms = (uint32_t)(1000.0f / b);
-        Serial.printf("# telemetria %s\n", cfg.telem_on ? "ON" : "OFF");
+      a = strtof(text, &end);
+      if (end != text) {
+        telemetry_on = a != 0.0f;
+        text = end;
+        b = strtof(text, &end);
+        if (end != text && b >= 1.0f && b <= 100.0f) {
+          telemetry_period_ms = (uint32_t)(1000.0f / b);
+        }
+        Serial.printf("# telemetria %s\n", telemetry_on ? "ON" : "OFF");
       }
       break;
-
     case 'G':
-      printConfig();
+      print_config_pending = true;
       break;
-
     default:
       break;
   }
-  if (motion_command) last_cmd_ms = now_ms;
 }
 
-static void readSerial(uint32_t now_ms) {
+static void readSerial(
+    bool &telemetry_on,
+    uint32_t &telemetry_period_ms,
+    bool &print_config_pending) {
   while (Serial.available()) {
     char ch = (char)Serial.read();
     if (ch == '\r') continue;
     if (ch == '\n') {
-      rxline[rxlen] = '\0';
-      if (rxlen) handleLine(rxline, now_ms);
+      if (!discard_rx_line) {
+        rxline[rxlen] = '\0';
+        if (rxlen) {
+          handleLine(rxline, telemetry_on, telemetry_period_ms,
+                     print_config_pending);
+        }
+      }
       rxlen = 0;
-    } else if (rxlen < sizeof(rxline) - 1) {
+      discard_rx_line = false;
+    } else if (!discard_rx_line && rxlen < sizeof(rxline) - 1) {
       rxline[rxlen++] = ch;
     } else {
-      rxlen = 0;
+      discard_rx_line = true;
     }
+  }
+}
+
+static void communicationTask(void *) {
+  bool telemetry_on = false;
+  bool print_config_pending = true;
+  uint32_t telemetry_period_ms = 40;
+  uint32_t last_odom_ms = millis();
+  uint32_t last_telemetry_ms = millis();
+  uint32_t last_jitter_ms = millis();
+  int32_t last_odom_left = 0;
+  int32_t last_odom_right = 0;
+  uint32_t last_watchdog_trips = 0;
+  uint32_t last_rejected_commands = 0;
+  StatePacket state = {};
+  bool have_state = false;
+
+  for (;;) {
+    readSerial(telemetry_on, telemetry_period_ms, print_config_pending);
+
+    StatePacket received;
+    if (xQueueReceive(state_queue, &received, 0) == pdPASS) {
+      state = received;
+      have_state = true;
+    }
+
+    uint32_t now = millis();
+    if (have_state && print_config_pending) {
+      printConfig(state);
+      print_config_pending = false;
+    }
+
+    if (have_state && state.watchdog_trips != last_watchdog_trips) {
+      last_watchdog_trips = state.watchdog_trips;
+      Serial.println(F("# WATCHDOG: sem comando, freio acionado"));
+    }
+    if (have_state && state.rejected_commands != last_rejected_commands) {
+      last_rejected_commands = state.rejected_commands;
+      Serial.println(F("# comando incompatível com o modo de controle"));
+    }
+
+    if (have_state && now - last_odom_ms >= ODOM_PERIOD_MS) {
+      uint32_t dt_ms = now - last_odom_ms;
+      last_odom_ms = now;
+      int32_t delta_left = state.ticks_left - last_odom_left;
+      int32_t delta_right = state.ticks_right - last_odom_right;
+      last_odom_left = state.ticks_left;
+      last_odom_right = state.ticks_right;
+      Serial.printf("O %ld %ld %lu\n",
+                    (long)delta_left, (long)delta_right,
+                    (unsigned long)dt_ms);
+    }
+
+    if (have_state && telemetry_on &&
+        now - last_telemetry_ms >= telemetry_period_ms) {
+      last_telemetry_ms = now;
+      Serial.printf("T %lu %.3f %.3f %.1f %d %.3f %.3f %.1f %d\n",
+                    (unsigned long)state.timestamp_ms,
+                    state.setpoint_left, state.measured_left,
+                    state.output_left, state.dac_left,
+                    state.setpoint_right, state.measured_right,
+                    state.output_right, state.dac_right);
+    }
+
+    if (have_state && now - last_jitter_ms >= JITTER_REPORT_MS) {
+      last_jitter_ms = now;
+      Serial.printf("J %lu %lu %lu %lu %.1f %lu %lu %lu\n",
+                    (unsigned long)state.timestamp_ms,
+                    (unsigned long)state.control_dt_us,
+                    (unsigned long)state.control_min_us,
+                    (unsigned long)state.control_max_us,
+                    state.control_mean_us,
+                    (unsigned long)state.deadline_misses,
+                    (unsigned long)state.control_cycles,
+                    (unsigned long)state.stack_high_watermark);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(2));
   }
 }
 
@@ -400,88 +718,56 @@ void setup() {
   Serial.begin(SER_BAUD);
   delay(300);
 
-  WL.pin_dac = DAC_L;  WL.pin_dir = DIR_L;
-  WR.pin_dac = DAC_R;  WR.pin_dir = DIR_R;
+  WL.pin_dac = DAC_L;
+  WL.pin_dir = DIR_L;
+  WR.pin_dac = DAC_R;
+  WR.pin_dir = DIR_R;
 
   pinMode(BRAKE, OUTPUT);
   pinMode(DIR_L, OUTPUT_OPEN_DRAIN);
   pinMode(DIR_R, OUTPUT_OPEN_DRAIN);
-
   digitalWrite(DIR_L, HIGH);
   digitalWrite(DIR_R, HIGH);
   dacWrite(DAC_L, 0);
   dacWrite(DAC_R, 0);
   brakesSet(true);
 
-  // GPIO 34/35 exigem nível externo definido.
   pinMode(SPEED_L, INPUT);
   pinMode(SPEED_R, INPUT);
   attachInterrupt(digitalPinToInterrupt(SPEED_L), isrSpeedL, CHANGE);
   attachInterrupt(digitalPinToInterrupt(SPEED_R), isrSpeedR, CHANGE);
 
+  motion_queue = xQueueCreate(1, sizeof(MotionPacket));
+  config_queue = xQueueCreate(8, sizeof(ConfigPacket));
+  state_queue = xQueueCreate(1, sizeof(StatePacket));
+  if (!motion_queue || !config_queue || !state_queue) {
+    Serial.println(F("# ERRO: não foi possível criar as filas"));
+    while (true) delay(1000);
+  }
+
   uint32_t now = millis();
-  last_cmd_ms = last_ctrl_ms = last_odom_ms = last_telem_ms = now;
-  WL.last_tick_ms = WR.last_tick_ms = now;
+  last_motion_ms = now;
+  WL.last_tick_ms = now;
+  WR.last_tick_ms = now;
 
   Serial.println(F("# [ModubotFirmwarePID READY]"));
-  Serial.println(F("# W <radL> <radR> rad/s | V <nL> <nR> DAC (malha aberta) | S freio"));
-  Serial.println(F("# M 0/1 malha | K kp ki kd | F kff dac_min | C tickL tickR | P 0/1 [hz] | G"));
-  printConfig();
+  Serial.println(F("# controle=Core1/50Hz/prio4 comunicação=Core0/prio2"));
+  Serial.println(F("# W/V | S | M 0/1 | K kp ki kd | F kff dac_min | C ticks | P | G"));
+
+  BaseType_t communication_created = xTaskCreatePinnedToCore(
+      communicationTask, "Communication", COMM_STACK_BYTES,
+      nullptr, COMM_PRIORITY, &communication_task_handle, COMM_CORE);
+  BaseType_t control_created = xTaskCreatePinnedToCore(
+      controlTask, "WheelControl", CTRL_STACK_BYTES,
+      nullptr, CTRL_PRIORITY, &control_task_handle, CONTROL_CORE);
+
+  if (communication_created != pdPASS || control_created != pdPASS) {
+    brakesSet(true);
+    Serial.println(F("# ERRO: não foi possível criar as tarefas"));
+    while (true) delay(1000);
+  }
 }
 
 void loop() {
-  uint32_t now = millis();
-
-  readSerial(now);
-
-  if (!wdt_tripped && (now - last_cmd_ms > WATCHDOG_MS)) {
-    stopAndBrake();
-    Serial.println(F("# WATCHDOG: sem comando, freio acionado"));
-  }
-
-  if (now - last_ctrl_ms >= CTRL_PERIOD_MS) {
-    float dt = (float)(now - last_ctrl_ms) * 1e-3f;
-    last_ctrl_ms = now;
-
-    sampleEncoder(WL, now);
-    sampleEncoder(WR, now);
-
-    if (!brake_on) {
-      float uL, uR;
-      if (cfg.closed_loop) {
-        uL = pidStep(WL, dt);
-        uR = pidStep(WR, dt);
-      } else {
-        uL = WL.norm_cmd * 255.0f;  WL.u = uL;
-        uR = WR.norm_cmd * 255.0f;  WR.u = uR;
-      }
-      applyOutput(WL, uL, now);
-      applyOutput(WR, uR, now);
-    }
-  }
-
-  if (cfg.telem_on && (now - last_telem_ms >= cfg.telem_period_ms)) {
-    last_telem_ms = now;
-    int dacLs = WL.dir_front ? WL.dac_applied : -WL.dac_applied;
-    int dacRs = WR.dir_front ? WR.dac_applied : -WR.dac_applied;
-    Serial.printf("T %lu %.3f %.3f %.1f %d %.3f %.3f %.1f %d\n",
-                  (unsigned long)now,
-                  WL.setpoint, WL.w_meas, WL.u, dacLs,
-                  WR.setpoint, WR.w_meas, WR.u, dacRs);
-  }
-
-  if (now - last_odom_ms >= ODOM_PERIOD_MS) {
-    uint32_t dt_ms = now - last_odom_ms;
-    last_odom_ms = now;
-
-    int32_t dL = WL.ticks_signed - WL.odo_last_sent;
-    int32_t dR = WR.ticks_signed - WR.odo_last_sent;
-    WL.odo_last_sent = WL.ticks_signed;
-    WR.odo_last_sent = WR.ticks_signed;
-
-    Serial.print('O');  Serial.print(' ');
-    Serial.print(dL);   Serial.print(' ');
-    Serial.print(dR);   Serial.print(' ');
-    Serial.println(dt_ms);
-  }
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }
