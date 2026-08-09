@@ -23,6 +23,8 @@ setup(
             'modubot_serial_bridge.feedforward_calibration:main',
             'analyze_feedforward_calibration = '
             'modubot_serial_bridge.analyze_feedforward_calibration:main',
+            'odometry_trajectory_experiment = '
+            'modubot_serial_bridge.odometry_trajectory_experiment:main',
         ],
     },
     data_files=[
@@ -30,7 +32,14 @@ setup(
             'share/ament_index/resource_index/packages',
             ['resource/' + package_name],
         ),
-        ('share/' + package_name, ['package.xml', 'CALIBRACAO_FEEDFORWARD.md']),
+        (
+            'share/' + package_name,
+            [
+                'package.xml',
+                'CALIBRACAO_FEEDFORWARD.md',
+                'EXPERIMENTO_TRAJETORIA_ODOMETRIA.md',
+            ],
+        ),
         (
             os.path.join('share', package_name, 'launch'),
             glob('launch/*.launch.py'),
