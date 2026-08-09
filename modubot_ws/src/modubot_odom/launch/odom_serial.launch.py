@@ -11,12 +11,11 @@ def generate_launch_description():
             output='screen',
             parameters=[
                 {
-                    'port': '/dev/ttyUSB0',
-                    'baud': 115200,
-                    'ticks_per_rev_left': 91.0,   # AJUSTA AQUI
-                    'ticks_per_rev_right': 91.0,  # AJUSTA AQUI
-                    'wheel_radius': 0.078,         # AJUSTA AQUI
-                    'wheel_separation': 0.225,     # AJUSTA AQUI
+                    'serial_rx_topic': '/modubot/serial_rx',
+                    'ticks_per_rev_left': 91.0,
+                    'ticks_per_rev_right': 91.0,
+                    'wheel_radius': 0.078,
+                    'wheel_separation': 0.225,
                     'frame_id': 'odom',
                     'child_frame_id': 'base_link',
                     'debug': False,
@@ -24,4 +23,3 @@ def generate_launch_description():
             ]
         )
     ])
-

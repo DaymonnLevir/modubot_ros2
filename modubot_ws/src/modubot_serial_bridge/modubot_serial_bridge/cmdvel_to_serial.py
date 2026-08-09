@@ -1,77 +1,220 @@
 #!/usr/bin/env python3
+import threading
+import time
+
+from geometry_msgs.msg import Twist
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist
-import serial, threading, time
+import serial
+from std_msgs.msg import String
 
-def clamp(x,a,b): return max(a, min(b, x))
 
 class CmdVelToSerial(Node):
     def __init__(self):
         super().__init__('cmdvel_to_serial')
 
-        # Parâmetros
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('baud', 115200)
-        self.declare_parameter('wheel_separation', 0.28)  # B [m]
-        self.declare_parameter('wheel_radius', 0.05)       # R [m]
-        self.declare_parameter('v_wheel_max', 0.6)         # vel. linear de roda p/ 100% DAC [m/s]
-        self.declare_parameter('watchdog_sec', 0.6)
+        self.declare_parameter('cmd_vel_topic', '/cmd_vel')
+        self.declare_parameter('serial_rx_topic', '/modubot/serial_rx')
+        self.declare_parameter('wheel_separation', 0.225)
+        self.declare_parameter('wheel_radius', 0.078)
+        self.declare_parameter('max_wheel_speed', 0.6)
+        self.declare_parameter('ticks_per_rev_left', 91.0)
+        self.declare_parameter('ticks_per_rev_right', 91.0)
+        self.declare_parameter('send_rate', 20.0)
+        self.declare_parameter('cmd_timeout', 0.5)
+        self.declare_parameter('closed_loop', True)
+        self.declare_parameter('kp', 6.0)
+        self.declare_parameter('ki', 30.0)
+        self.declare_parameter('kd', 0.0)
+        self.declare_parameter('kff', 5.9)
+        self.declare_parameter('dac_min', 7.0)
+        self.declare_parameter('debug', False)
 
-        port = self.get_parameter('port').value
-        baud = self.get_parameter('baud').value
+        port = str(self.get_parameter('port').value)
+        baud = int(self.get_parameter('baud').value)
+        cmd_vel_topic = str(self.get_parameter('cmd_vel_topic').value)
+        serial_rx_topic = str(self.get_parameter('serial_rx_topic').value)
+
+        self.wheel_separation = float(
+            self.get_parameter('wheel_separation').value)
+        self.wheel_radius = float(self.get_parameter('wheel_radius').value)
+        self.max_wheel_speed = float(
+            self.get_parameter('max_wheel_speed').value)
+        self.ticks_left = float(self.get_parameter('ticks_per_rev_left').value)
+        self.ticks_right = float(self.get_parameter('ticks_per_rev_right').value)
+        self.send_rate = float(self.get_parameter('send_rate').value)
+        self.cmd_timeout = float(self.get_parameter('cmd_timeout').value)
+        self.closed_loop = bool(self.get_parameter('closed_loop').value)
+        self.kp = float(self.get_parameter('kp').value)
+        self.ki = float(self.get_parameter('ki').value)
+        self.kd = float(self.get_parameter('kd').value)
+        self.kff = float(self.get_parameter('kff').value)
+        self.dac_min = float(self.get_parameter('dac_min').value)
+        self.debug = bool(self.get_parameter('debug').value)
+
+        self._validate_parameters()
 
         try:
-            self.ser = serial.Serial(port, baudrate=baud, timeout=0.05)
-            self.get_logger().info(f'Conectado em {port} @ {baud}')
-        except Exception as e:
-            self.get_logger().fatal(f'Não abriu serial: {e}')
+            self.serial = serial.Serial(
+                port,
+                baudrate=baud,
+                timeout=0,
+                write_timeout=0.2,
+            )
+        except (serial.SerialException, OSError) as exc:
+            self.get_logger().fatal(f'Não foi possível abrir {port}: {exc}')
             raise
 
-        self.sub = self.create_subscription(Twist, '/cmd_vel', self.on_twist, 10)
-        self.lock = threading.Lock()
-        self.last_send = time.time()
-        self.timer = self.create_timer(0.2, self.watchdog)
+        self.get_logger().info(f'Porta serial {port} aberta em {baud} baud')
+        self.serial_lock = threading.Lock()
+        self.rx_buffer = bytearray()
+        self.target_rad = (0.0, 0.0)
+        self.target_norm = (0.0, 0.0)
+        self.last_cmd_time = None
+        self.braked = True
 
-    def write_line(self, line: str):
-        with self.lock:
-            try:
-                self.ser.write((line+'\n').encode('utf-8'))
-                self.last_send = time.time()
-            except Exception as e:
-                self.get_logger().error(f'Falha ao enviar: {e}')
+        self.serial_pub = self.create_publisher(String, serial_rx_topic, 100)
+        self.create_subscription(Twist, cmd_vel_topic, self.on_cmd_vel, 10)
+        self.send_timer = self.create_timer(
+            1.0 / self.send_rate, self.on_send_timer)
+        self.read_timer = self.create_timer(0.005, self.read_serial)
 
-    def on_twist(self, msg: Twist):
-        B = float(self.get_parameter('wheel_separation').value)
-        v_wheel_max = float(self.get_parameter('v_wheel_max').value)
+        # A abertura da USB pode reiniciar a ESP32.
+        time.sleep(0.5)
+        self.configure_firmware()
 
-        vx = msg.linear.x         # frente(+)/ré(-)
-        wz = msg.angular.z        # yaw (CCW +)
-        # (holonômico: linear.y, linear.z, etc. são ignorados para diferencial)
+    def _validate_parameters(self):
+        positive = {
+            'wheel_separation': self.wheel_separation,
+            'wheel_radius': self.wheel_radius,
+            'max_wheel_speed': self.max_wheel_speed,
+            'ticks_per_rev_left': self.ticks_left,
+            'ticks_per_rev_right': self.ticks_right,
+            'send_rate': self.send_rate,
+            'cmd_timeout': self.cmd_timeout,
+        }
+        invalid = [name for name, value in positive.items() if value <= 0.0]
+        if invalid:
+            raise ValueError(
+                f'Parâmetros devem ser positivos: {", ".join(invalid)}')
+        if min(self.kp, self.ki, self.kd, self.kff, self.dac_min) < 0.0:
+            raise ValueError('Ganhos, KFF e dac_min não podem ser negativos.')
+        if self.dac_min > 255.0:
+            raise ValueError('dac_min deve estar entre 0 e 255.')
 
-        # cinemâtica diferencial (velocidade linear de cada roda, m/s)
-        vL = vx - (B/2.0)*wz
-        vR = vx + (B/2.0)*wz
+    def write_line(self, line):
+        try:
+            with self.serial_lock:
+                self.serial.write((line + '\n').encode('ascii'))
+        except (serial.SerialException, serial.SerialTimeoutException, OSError) as exc:
+            self.get_logger().error(f'Falha ao escrever na serial: {exc}')
 
-        # normaliza para [-1..1] conforme capacidade de roda
-        if v_wheel_max <= 0.0:
-            v_wheel_max = 0.6
-        nL = clamp(vL / v_wheel_max, -1.0, 1.0)
-        nR = clamp(vR / v_wheel_max, -1.0, 1.0)
+    def configure_firmware(self):
+        self.target_rad = (0.0, 0.0)
+        self.target_norm = (0.0, 0.0)
+        self.last_cmd_time = None
+        self.write_line(f'C {self.ticks_left:.3f} {self.ticks_right:.3f}')
+        self.write_line(f'K {self.kp:.4f} {self.ki:.4f} {self.kd:.4f}')
+        self.write_line(f'F {self.kff:.4f} {self.dac_min:.3f}')
+        self.write_line(f'M {1 if self.closed_loop else 0}')
+        self.write_line('P 0')
+        self.braked = True
+        mode = 'fechada' if self.closed_loop else 'aberta'
+        self.get_logger().info(
+            f'ESP32 configurada: malha {mode}, '
+            f'K=({self.kp:g}, {self.ki:g}, {self.kd:g}), KFF={self.kff:g}')
 
-        self.write_line(f"V {nL:.3f} {nR:.3f}")
-        # self.get_logger().debug(f"cmd_vel -> V {nL:.2f} {nR:.2f}")
+    def on_cmd_vel(self, msg):
+        left = float(msg.linear.x) - (
+            self.wheel_separation / 2.0) * float(msg.angular.z)
+        right = float(msg.linear.x) + (
+            self.wheel_separation / 2.0) * float(msg.angular.z)
 
-    def watchdog(self):
-        if time.time() - self.last_send > float(self.get_parameter('watchdog_sec').value):
-            self.write_line("S")
+        peak = max(abs(left), abs(right))
+        if peak > self.max_wheel_speed:
+            scale = self.max_wheel_speed / peak
+            left *= scale
+            right *= scale
+            if self.debug:
+                self.get_logger().warn(
+                    f'Comando saturado com escala proporcional {scale:.3f}')
 
-def main():
-    rclpy.init()
+        self.target_rad = (
+            left / self.wheel_radius,
+            right / self.wheel_radius,
+        )
+        self.target_norm = (
+            left / self.max_wheel_speed,
+            right / self.max_wheel_speed,
+        )
+        self.last_cmd_time = self.get_clock().now()
+
+    def on_send_timer(self):
+        if self.last_cmd_time is None:
+            return
+
+        age = (
+            self.get_clock().now() - self.last_cmd_time
+        ).nanoseconds * 1e-9
+        stopped = age > self.cmd_timeout or all(
+            abs(value) < 1e-4 for value in self.target_rad)
+
+        if stopped:
+            if not self.braked:
+                self.write_line('S')
+                self.braked = True
+            return
+
+        if self.closed_loop:
+            left, right = self.target_rad
+            self.write_line(f'W {left:.4f} {right:.4f}')
+        else:
+            left, right = self.target_norm
+            self.write_line(f'V {left:.4f} {right:.4f}')
+        self.braked = False
+
+    def read_serial(self):
+        try:
+            waiting = self.serial.in_waiting
+            if waiting:
+                self.rx_buffer.extend(self.serial.read(waiting))
+        except (serial.SerialException, OSError) as exc:
+            self.get_logger().warn(f'Falha ao ler a serial: {exc}')
+            return
+
+        while b'\n' in self.rx_buffer:
+            raw, _, self.rx_buffer = self.rx_buffer.partition(b'\n')
+            line = raw.rstrip(b'\r').decode('utf-8', errors='replace').strip()
+            if not line:
+                continue
+
+            message = String()
+            message.data = line
+            self.serial_pub.publish(message)
+
+            if 'ModubotFirmwarePID READY' in line:
+                self.configure_firmware()
+            elif self.debug and line.startswith('#'):
+                self.get_logger().info(f'ESP32: {line}')
+
+    def shutdown(self):
+        try:
+            self.write_line('S')
+            self.serial.close()
+        except (serial.SerialException, OSError):
+            pass
+
+
+def main(args=None):
+    rclpy.init(args=args)
     node = CmdVelToSerial()
     try:
         rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
     finally:
+        node.shutdown()
         node.destroy_node()
         rclpy.shutdown()
-

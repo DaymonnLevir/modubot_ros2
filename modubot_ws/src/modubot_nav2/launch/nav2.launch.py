@@ -25,6 +25,7 @@ def generate_launch_description():
     default_rviz = os.path.join(nav2_share, "rviz", "nav2.rviz")
 
     use_sim_time = LaunchConfiguration("use_sim_time", default="false")
+    closed_loop = LaunchConfiguration("closed_loop", default="true")
 
     # --- A EQUIPE DE LANÇAMENTO ---
 
@@ -36,24 +37,16 @@ def generate_launch_description():
         launch_arguments={'serial_port': '/dev/ttyUSB1'}.items() # <-- VERIFIQUE SE É ESTA PORTA
     )
 
-    # B. A Odometria Real (Substituindo a TF Estática)
-    node_odometry = Node(
-        package='modubot_odom',
-        executable='serial_odom',
-        name='serial_odom',
-        output='screen',
-        parameters=[{
-            'port': '/dev/ttyUSB0',  # <-- VERIFIQUE SE É ESTA PORTA
-            'baud': 115200,
-            'ticks_per_rev_left': 91.0,
-            'ticks_per_rev_right': 91.0,
-            'wheel_radius': 0.078,
-            'wheel_separation': 0.225,
-            'frame_id': 'odom',
-            'child_frame_id': 'base_link',
-            'debug': False,
-            'use_sim_time': use_sim_time  # <-- GARANTE A SINCRONIA
-        }]
+    # B. Base móvel: uma única ponte serial + odometria
+    launch_base = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('modubot_serial_bridge'),
+                'launch',
+                'base.launch.py',
+            )
+        ),
+        launch_arguments={'closed_loop': closed_loop}.items(),
     )
 
     # C. A "Alma" do Robô (Estado e Juntas)
@@ -100,12 +93,13 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="false"),
+        DeclareLaunchArgument("closed_loop", default_value="true"),
         DeclareLaunchArgument("params_file", default_value=default_params),
         DeclareLaunchArgument("rviz_config", default_value=default_rviz),
         DeclareLaunchArgument("map", default_value=default_map),
 
         launch_rplidar,
-        node_odometry,
+        launch_base,
         node_robot_state_publisher,
         node_joint_state_publisher,
         node_script_filter,

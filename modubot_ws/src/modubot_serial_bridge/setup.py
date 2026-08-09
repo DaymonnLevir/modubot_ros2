@@ -14,7 +14,7 @@ setup(
     zip_safe=True,
     maintainer='levir',
     maintainer_email='levir@example.com',
-    description='Bridge /cmd_vel -> ESP32 (V vL vR)',
+    description='ROS 2 bridge for ModuBot PI firmware and serial telemetry',
     license='MIT',
     entry_points={
         'console_scripts': [
@@ -34,6 +34,10 @@ setup(
         (
             os.path.join('share', package_name, 'launch'),
             glob('launch/*.launch.py'),
+        ),
+        (
+            os.path.join('share', package_name, 'config'),
+            glob('config/*.yaml'),
         ),
     ],
 )

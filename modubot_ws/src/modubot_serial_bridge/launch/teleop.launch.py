@@ -1,19 +1,22 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
-
-#test  
+from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
     serial_port = LaunchConfiguration('serial_port')
     baudrate    = LaunchConfiguration('baudrate')
-    cmd_vel     = LaunchConfiguration('cmd_vel_topic')
+    start_base = LaunchConfiguration('start_base')
+    closed_loop = LaunchConfiguration('closed_loop')
 
     return LaunchDescription([
         DeclareLaunchArgument('serial_port', default_value='/dev/ttyUSB0'),
         DeclareLaunchArgument('baudrate', default_value='115200'),
-        DeclareLaunchArgument('cmd_vel_topic', default_value='/cmd_vel'),
+        DeclareLaunchArgument('start_base', default_value='true'),
+        DeclareLaunchArgument('closed_loop', default_value='true'),
 
         # Teclado -> /cmd_vel
         Node(
@@ -28,17 +31,17 @@ def generate_launch_description():
             }],
         ),
 
-        # /cmd_vel -> Serial (ESP32)
-        Node(
-            package='modubot_teleop',
-            executable='cmdvel_to_serial',
-            name='cmdvel_to_serial',
-            output='screen',
-            emulate_tty=True,
-            parameters=[{
-                'serial_port': serial_port,
-                'baudrate': baudrate,
-                'cmd_vel_topic': cmd_vel,
-            }],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(PathJoinSubstitution([
+                FindPackageShare('modubot_serial_bridge'),
+                'launch',
+                'base.launch.py',
+            ])),
+            condition=IfCondition(start_base),
+            launch_arguments={
+                'port': serial_port,
+                'baud': baudrate,
+                'closed_loop': closed_loop,
+            }.items(),
         ),
     ])
