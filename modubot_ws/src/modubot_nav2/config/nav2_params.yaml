@@ -21,9 +21,9 @@ amcl:
     scan_topic: "scan_filtered"
     min_particles: 500
     max_particles: 2000
-    max_beams: 90
-    update_min_d: 0.05
-    update_min_a: 0.05
+    max_beams: 120
+    update_min_d: 0.025
+    update_min_a: 0.025
     resample_interval: 1
     transform_tolerance: 0.2
     recovery_alpha_fast: 0.1
@@ -36,9 +36,9 @@ amcl:
     alpha5: 0.2
     laser_model_type: "likelihood_field"
     laser_likelihood_max_dist: 2.0
-    sigma_hit: 0.2
-    z_hit: 0.7
-    z_rand: 0.3
+    sigma_hit: 0.18
+    z_hit: 0.8
+    z_rand: 0.2
     set_initial_pose: true
     initial_pose:
       x: 0.0
@@ -52,6 +52,7 @@ bt_navigator:
     global_frame: "map"
     robot_base_frame: "base_link"
     bt_loop_duration: 50
+    default_nav_to_pose_bt_xml: "__MODUBOT_NAV_TO_POSE_BT__"
 
 planner_server:
   ros__parameters:
@@ -81,22 +82,45 @@ controller_server:
       yaw_goal_tolerance: 0.15
       stateful: true
     FollowPath:
-      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 0.35
-      lookahead_dist: 0.5
-      min_lookahead_dist: 0.3
-      max_lookahead_dist: 0.8
-      lookahead_time: 1.0
-      use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.05
-      approach_velocity_scaling_dist: 0.6
-      use_collision_detection: true
-      max_allowed_time_to_collision_up_to_carrot: 1.0
-      use_regulated_linear_velocity_scaling: true
-      regulated_linear_scaling_min_radius: 0.9
-      regulated_linear_scaling_min_speed: 0.10
-      rotate_to_heading_angular_vel: 0.6
+      plugin: "dwb_core::DWBLocalPlanner"
+      debug_trajectory_details: false
+      min_vel_x: 0.0
+      min_vel_y: 0.0
+      max_vel_x: 0.35
+      max_vel_y: 0.0
+      max_vel_theta: 0.8
+      min_speed_xy: 0.0
+      max_speed_xy: 0.35
+      min_speed_theta: 0.0
+      acc_lim_x: 0.5
+      acc_lim_y: 0.0
+      acc_lim_theta: 1.5
+      decel_lim_x: -0.8
+      decel_lim_y: 0.0
+      decel_lim_theta: -2.0
+      vx_samples: 12
+      vy_samples: 1
+      vtheta_samples: 20
+      sim_time: 1.8
+      linear_granularity: 0.04
+      angular_granularity: 0.025
       transform_tolerance: 0.2
+      xy_goal_tolerance: 0.15
+      trans_stopped_velocity: 0.05
+      short_circuit_trajectory_evaluation: true
+      stateful: true
+      critics: ["RotateToGoal", "Oscillation", "ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
+      ObstacleFootprint.scale: 0.08
+      ObstacleFootprint.sum_scores: true
+      PathAlign.scale: 20.0
+      PathAlign.forward_point_distance: 0.25
+      GoalAlign.scale: 16.0
+      GoalAlign.forward_point_distance: 0.25
+      PathDist.scale: 24.0
+      GoalDist.scale: 16.0
+      RotateToGoal.scale: 28.0
+      RotateToGoal.slowing_factor: 5.0
+      RotateToGoal.lookahead_time: -1.0
 
 global_costmap:
   global_costmap:
@@ -104,13 +128,13 @@ global_costmap:
       use_sim_time: false
       global_frame: "map"
       robot_base_frame: "base_link"
-      update_frequency: 1.0
+      update_frequency: 2.0
       publish_frequency: 1.0
       resolution: 0.05
       transform_tolerance: 0.3
 
-      # Ajuste para o seu robô:
-      robot_radius: 0.26
+      footprint: "[[-0.42, -0.20], [-0.42, 0.20], [0.14, 0.20], [0.14, -0.20]]"
+      footprint_padding: 0.08
 
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       static_layer:
@@ -130,8 +154,8 @@ global_costmap:
           raytrace_max_range: 8.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.45
-        cost_scaling_factor: 3.0
+        inflation_radius: 0.85
+        cost_scaling_factor: 1.4
 
 local_costmap:
   local_costmap:
@@ -139,16 +163,16 @@ local_costmap:
       use_sim_time: false
       global_frame: "odom"
       robot_base_frame: "base_link"
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 10.0
+      publish_frequency: 5.0
       rolling_window: true
       width: 3
       height: 3
       resolution: 0.05
       transform_tolerance: 0.3
 
-      # Ajuste para o seu robô:
-      robot_radius: 0.26
+      footprint: "[[-0.42, -0.20], [-0.42, 0.20], [0.14, 0.20], [0.14, -0.20]]"
+      footprint_padding: 0.08
 
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -161,16 +185,11 @@ local_costmap:
           clearing: true
           max_obstacle_height: 2.0
           obstacle_min_range: 0.15
-          obstacle_max_range: 6.0
+          obstacle_max_range: 3.0
           raytrace_min_range: 0.15
-          raytrace_max_range: 8.0
+          raytrace_max_range: 3.5
+          observation_persistence: 0.25
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.35
-        cost_scaling_factor: 3.0
-      
-lifecycle_manager_navigation:
-  ros__parameters:
-    use_sim_time: false
-    autostart: true
-    node_names: ['map_server', 'amcl', 'planner_server', 'controller_server', 'bt_navigator']
+        inflation_radius: 0.75
+        cost_scaling_factor: 1.4

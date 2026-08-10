@@ -12,6 +12,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from nav2_common.launch import RewrittenYaml
 import xacro
 
 
@@ -37,9 +38,21 @@ def generate_launch_description():
     )
     default_map = os.path.join(nav2_share, "maps", "piso01.yaml")
     default_rviz = os.path.join(nav2_share, "rviz", "nav2.rviz")
+    default_nav_bt = os.path.join(
+        nav2_share,
+        "behavior_trees",
+        "navigate_to_pose_realtime.xml",
+    )
     use_sim_time = LaunchConfiguration("use_sim_time", default="false")
     closed_loop = LaunchConfiguration("closed_loop", default="true")
     use_rviz = LaunchConfiguration("use_rviz")
+    configured_nav2_params = RewrittenYaml(
+        source_file=LaunchConfiguration("nav2_params_file"),
+        param_rewrites={
+            "default_nav_to_pose_bt_xml": default_nav_bt,
+        },
+        convert_types=True,
+    )
 
     # --- A EQUIPE DE LANÇAMENTO ---
 
@@ -133,7 +146,7 @@ def generate_launch_description():
             "use_sim_time": use_sim_time,
             "autostart": "true",
             "map": LaunchConfiguration("map"),
-            "params_file": LaunchConfiguration("nav2_params_file"),
+            "params_file": configured_nav2_params,
             "use_robot_state_pub": "false",
         }.items(),
     )

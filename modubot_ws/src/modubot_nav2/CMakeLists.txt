@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(modubot_nav2)
 
-install(DIRECTORY launch config maps rviz
+install(DIRECTORY launch config maps rviz behavior_trees
   DESTINATION share/${PROJECT_NAME}
 )
 
