@@ -62,7 +62,9 @@ class ModubotFilter(Node):
             )
 
             if blocked or (math.isfinite(r) and r < self.minimum_range):
-                filtered_ranges.append(float('inf'))
+                # NaN means "not observed". Using +inf here would make the
+                # obstacle layer raytrace the blind sector as free space.
+                filtered_ranges.append(float('nan'))
             else:
                 filtered_ranges.append(r)
 
