@@ -16,6 +16,7 @@ def generate_launch_description():
     port = LaunchConfiguration('port')
     baud = LaunchConfiguration('baud')
     closed_loop = LaunchConfiguration('closed_loop')
+    cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
     params_file = LaunchConfiguration('params_file')
 
     bridge = Node(
@@ -31,6 +32,7 @@ def generate_launch_description():
                 'port': port,
                 'baud': ParameterValue(baud, value_type=int),
                 'closed_loop': ParameterValue(closed_loop, value_type=bool),
+                'cmd_vel_topic': cmd_vel_topic,
             },
         ],
     )
@@ -49,6 +51,7 @@ def generate_launch_description():
         DeclareLaunchArgument('port', default_value='/dev/ttyUSB0'),
         DeclareLaunchArgument('baud', default_value='115200'),
         DeclareLaunchArgument('closed_loop', default_value='true'),
+        DeclareLaunchArgument('cmd_vel_topic', default_value='/cmd_vel'),
         DeclareLaunchArgument('params_file', default_value=default_params),
         bridge,
         odometry,

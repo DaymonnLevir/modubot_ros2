@@ -4,6 +4,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
+    SetEnvironmentVariable,
     TimerAction,
     UnsetEnvironmentVariable,
 )
@@ -12,6 +13,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
+from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
 import xacro
 
@@ -53,6 +55,10 @@ def generate_launch_description():
         },
         convert_types=True,
     )
+    configured_nav2_parameter_file = ParameterFile(
+        configured_nav2_params,
+        allow_substs=True,
+    )
 
     # --- A EQUIPE DE LANÇAMENTO ---
 
@@ -86,6 +92,7 @@ def generate_launch_description():
         launch_arguments={
             'port': LaunchConfiguration('base_port'),
             'closed_loop': closed_loop,
+            'cmd_vel_topic': '/cmd_vel_safe',
             'params_file': LaunchConfiguration('base_params_file'),
         }.items(),
     )
@@ -155,6 +162,32 @@ def generate_launch_description():
         actions=[nav2_bringup],
     )
 
+    node_collision_monitor = Node(
+        package='nav2_collision_monitor',
+        executable='collision_monitor',
+        name='collision_monitor',
+        parameters=[configured_nav2_parameter_file],
+        output='screen',
+    )
+    node_collision_monitor_lifecycle = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_collision_monitor',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'autostart': True,
+            'node_names': ['collision_monitor'],
+        }],
+        output='screen',
+    )
+    delayed_collision_monitor = TimerAction(
+        period=2.0,
+        actions=[
+            node_collision_monitor,
+            node_collision_monitor_lifecycle,
+        ],
+    )
+
     # F. Interface Visual (RViz)
     node_rviz = Node(
         package="rviz2",
@@ -192,12 +225,14 @@ def generate_launch_description():
         UnsetEnvironmentVariable("ROS_DISCOVERY_SERVER"),
         UnsetEnvironmentVariable("FASTDDS_DEFAULT_PROFILES_FILE"),
         UnsetEnvironmentVariable("FASTRTPS_DEFAULT_PROFILES_FILE"),
+        SetEnvironmentVariable("ROS_LOCALHOST_ONLY", "0"),
 
         node_rplidar,
         launch_base,
         node_robot_state_publisher,
         node_joint_state_publisher,
         node_script_filter,
+        delayed_collision_monitor,
         delayed_nav2_bringup,
         delayed_rviz
     ])
