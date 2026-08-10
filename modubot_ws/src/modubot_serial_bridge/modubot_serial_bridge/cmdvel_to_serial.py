@@ -17,12 +17,13 @@ class CmdVelToSerial(Node):
         self.declare_parameter('baud', 115200)
         self.declare_parameter('cmd_vel_topic', '/cmd_vel')
         self.declare_parameter('serial_rx_topic', '/modubot/serial_rx')
-        self.declare_parameter('wheel_separation', 0.225)
+        self.declare_parameter('wheel_separation', 0.207)
         self.declare_parameter('wheel_radius', 0.078)
         self.declare_parameter('max_wheel_speed', 0.6)
         self.declare_parameter('ticks_per_rev_left', 91.0)
         self.declare_parameter('ticks_per_rev_right', 91.0)
         self.declare_parameter('send_rate', 20.0)
+        self.declare_parameter('read_rate', 100.0)
         self.declare_parameter('cmd_timeout', 0.5)
         self.declare_parameter('closed_loop', True)
         self.declare_parameter('kp', 12.0)
@@ -45,6 +46,7 @@ class CmdVelToSerial(Node):
         self.ticks_left = float(self.get_parameter('ticks_per_rev_left').value)
         self.ticks_right = float(self.get_parameter('ticks_per_rev_right').value)
         self.send_rate = float(self.get_parameter('send_rate').value)
+        self.read_rate = float(self.get_parameter('read_rate').value)
         self.cmd_timeout = float(self.get_parameter('cmd_timeout').value)
         self.closed_loop = bool(self.get_parameter('closed_loop').value)
         self.kp = float(self.get_parameter('kp').value)
@@ -79,7 +81,8 @@ class CmdVelToSerial(Node):
         self.create_subscription(Twist, cmd_vel_topic, self.on_cmd_vel, 10)
         self.send_timer = self.create_timer(
             1.0 / self.send_rate, self.on_send_timer)
-        self.read_timer = self.create_timer(0.005, self.read_serial)
+        self.read_timer = self.create_timer(
+            1.0 / self.read_rate, self.read_serial)
 
         # A abertura da USB pode reiniciar a ESP32.
         time.sleep(0.5)
@@ -93,6 +96,7 @@ class CmdVelToSerial(Node):
             'ticks_per_rev_left': self.ticks_left,
             'ticks_per_rev_right': self.ticks_right,
             'send_rate': self.send_rate,
+            'read_rate': self.read_rate,
             'cmd_timeout': self.cmd_timeout,
         }
         invalid = [name for name, value in positive.items() if value <= 0.0]
@@ -217,4 +221,5 @@ def main(args=None):
     finally:
         node.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()

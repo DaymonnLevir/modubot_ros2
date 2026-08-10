@@ -16,9 +16,11 @@ class SerialOdomNode(Node):
         self.declare_parameter('ticks_per_rev_left', 91.0)
         self.declare_parameter('ticks_per_rev_right', 91.0)
         self.declare_parameter('wheel_radius', 0.078)
-        self.declare_parameter('wheel_separation', 0.225)
+        self.declare_parameter('wheel_separation', 0.207)
         self.declare_parameter('frame_id', 'odom')
         self.declare_parameter('child_frame_id', 'base_link')
+        self.declare_parameter('publish_rate', 20.0)
+        self.declare_parameter('velocity_timeout', 0.2)
         self.declare_parameter('debug', False)
 
         serial_rx_topic = str(self.get_parameter('serial_rx_topic').value)
@@ -32,6 +34,10 @@ class SerialOdomNode(Node):
         self.frame_id = str(self.get_parameter('frame_id').value)
         self.child_frame_id = str(
             self.get_parameter('child_frame_id').value)
+        self.publish_rate = float(
+            self.get_parameter('publish_rate').value)
+        self.velocity_timeout = float(
+            self.get_parameter('velocity_timeout').value)
         self.debug = bool(self.get_parameter('debug').value)
 
         if min(
@@ -39,16 +45,23 @@ class SerialOdomNode(Node):
             self.ticks_right,
             self.wheel_radius,
             self.wheel_separation,
+            self.publish_rate,
+            self.velocity_timeout,
         ) <= 0.0:
-            raise ValueError('Geometria e ticks por volta devem ser positivos.')
+            raise ValueError(
+                'Geometria, ticks e parâmetros temporais devem ser positivos.')
 
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
+        self.last_linear = 0.0
+        self.last_angular = 0.0
+        self.last_measurement_ns = None
 
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.create_subscription(String, serial_rx_topic, self.on_serial_line, 100)
+        self.create_timer(1.0 / self.publish_rate, self.publish_odometry)
 
         self.get_logger().info(
             f'Odometria ouvindo {serial_rx_topic}; '
@@ -105,6 +118,9 @@ class SerialOdomNode(Node):
             math.sin(self.theta + delta_theta),
             math.cos(self.theta + delta_theta),
         )
+        self.last_linear = linear
+        self.last_angular = angular
+        self.last_measurement_ns = self.get_clock().now().nanoseconds
 
         if self.debug:
             self.get_logger().info(
@@ -112,10 +128,17 @@ class SerialOdomNode(Node):
                 f'v={linear:.3f} w={angular:.3f} '
                 f'x={self.x:.3f} y={self.y:.3f} theta={self.theta:.3f}')
 
-        self.publish_odometry(linear, angular)
+    def publish_odometry(self):
+        now = self.get_clock().now()
+        linear = 0.0
+        angular = 0.0
+        if self.last_measurement_ns is not None:
+            age = (now.nanoseconds - self.last_measurement_ns) / 1e9
+            if age <= self.velocity_timeout:
+                linear = self.last_linear
+                angular = self.last_angular
 
-    def publish_odometry(self, linear, angular):
-        stamp = self.get_clock().now().to_msg()
+        stamp = now.to_msg()
         qx, qy, qz, qw = self.quaternion_from_yaw(self.theta)
 
         odom = Odometry()
@@ -157,4 +180,5 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()

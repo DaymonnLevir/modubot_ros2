@@ -170,7 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--ticks-right', type=float, default=91.0)
     parser.add_argument('--wheel-radius-left', type=float, default=0.078)
     parser.add_argument('--wheel-radius-right', type=float, default=0.078)
-    parser.add_argument('--wheel-separation', type=float, default=0.225)
+    parser.add_argument('--wheel-separation', type=float, default=0.207)
     parser.add_argument('--arena-width', type=float, default=2.0)
     parser.add_argument('--arena-height', type=float, default=1.2)
     parser.add_argument('--surface', default='not_recorded')

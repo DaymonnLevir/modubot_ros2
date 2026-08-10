@@ -5,13 +5,14 @@ cmdvel_to_serial:
     cmd_vel_topic: /cmd_vel
     serial_rx_topic: /modubot/serial_rx
 
-    wheel_separation: 0.225
+    wheel_separation: 0.207
     wheel_radius: 0.078
     max_wheel_speed: 0.6
     ticks_per_rev_left: 91.0
     ticks_per_rev_right: 91.0
 
     send_rate: 20.0
+    read_rate: 100.0
     cmd_timeout: 0.5
     closed_loop: true
     debug: false
@@ -25,10 +26,12 @@ cmdvel_to_serial:
 serial_odom:
   ros__parameters:
     serial_rx_topic: /modubot/serial_rx
-    wheel_separation: 0.225
+    wheel_separation: 0.207
     wheel_radius: 0.078
     ticks_per_rev_left: 91.0
     ticks_per_rev_right: 91.0
     frame_id: odom
     child_frame_id: base_link
+    publish_rate: 20.0
+    velocity_timeout: 0.2
     debug: false

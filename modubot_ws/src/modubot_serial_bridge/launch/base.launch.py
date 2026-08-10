@@ -23,6 +23,8 @@ def generate_launch_description():
         executable='cmdvel_to_serial',
         name='cmdvel_to_serial',
         output='screen',
+        respawn=True,
+        respawn_delay=1.0,
         parameters=[
             params_file,
             {
@@ -38,6 +40,8 @@ def generate_launch_description():
         executable='serial_odom',
         name='serial_odom',
         output='screen',
+        respawn=True,
+        respawn_delay=1.0,
         parameters=[params_file],
     )
 

@@ -79,7 +79,7 @@ ros2 run modubot_serial_bridge feedforward_calibration \
   --command-time 8 \
   --ticks-left 91 --ticks-right 91 \
   --wheel-radius-left 0.078 --wheel-radius-right 0.078 \
-  --wheel-separation 0.225 \
+  --wheel-separation 0.207 \
   --surface "concreto liso" \
   --robot-mass-kg VALOR_MEDIDO \
   --battery-start-v VALOR_MEDIDO \
@@ -134,7 +134,7 @@ ros2 run modubot_serial_bridge feedforward_calibration \
   --steady-end-margin 0.5 \
   --ticks-left 91 --ticks-right 91 \
   --wheel-radius-left 0.078 --wheel-radius-right 0.078 \
-  --wheel-separation 0.225 \
+  --wheel-separation 0.207 \
   --surface "suspended_wheels_free" \
   --notes "No-load suspended sweep; do not use as the ground feedforward map" \
   --campaign-name suspended_full_range

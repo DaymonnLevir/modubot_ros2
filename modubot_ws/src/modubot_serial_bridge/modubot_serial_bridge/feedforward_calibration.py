@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Interactive or automatic runner for ModuBot feedforward calibration.
+"""
+Interactive or automatic runner for ModuBot feedforward calibration.
 
 This process is the sole owner of the ESP32 serial port during a campaign. It
 sends normalized left/right commands, parses ``O dL dR dt_ms`` telemetry, and
@@ -643,7 +644,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--ticks-right', type=float, default=91.0)
     parser.add_argument('--wheel-radius-left', type=float, default=0.078)
     parser.add_argument('--wheel-radius-right', type=float, default=0.078)
-    parser.add_argument('--wheel-separation', type=float, default=0.225)
+    parser.add_argument('--wheel-separation', type=float, default=0.207)
     parser.add_argument('--v-wheel-max', type=float, default=0.6)
     parser.add_argument('--dac-reference-voltage', type=float, default=3.3)
     parser.add_argument('--surface', default='not_recorded')

@@ -6,9 +6,10 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
+
 def generate_launch_description():
     serial_port = LaunchConfiguration('serial_port')
-    baudrate    = LaunchConfiguration('baudrate')
+    baudrate = LaunchConfiguration('baudrate')
     start_base = LaunchConfiguration('start_base')
     closed_loop = LaunchConfiguration('closed_loop')
 

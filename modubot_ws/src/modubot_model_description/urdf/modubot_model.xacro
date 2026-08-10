@@ -12,14 +12,14 @@
   <visual>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0 0 0" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -33,14 +33,14 @@
   <visual>
     <origin xyz="-0.002507 -0.004307 -0.219668" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="-0.002507 -0.004307 -0.219668" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/lidar_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -54,14 +54,14 @@
   <visual>
     <origin xyz="0.375122 0.16578 -0.047978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0.375122 0.16578 -0.047978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/right_caster_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -75,14 +75,14 @@
   <visual>
     <origin xyz="0.375122 -0.16422 -0.047978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0.375122 -0.16422 -0.047978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/left_caster_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -96,14 +96,14 @@
   <visual>
     <origin xyz="0.001398 0.100604 -0.060978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0.001398 0.100604 -0.060978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/right_wheel_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -117,14 +117,14 @@
   <visual>
     <origin xyz="0.001398 -0.106396 -0.060978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0.001398 -0.106396 -0.060978" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/left_wheel_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>
@@ -138,14 +138,14 @@
   <visual>
     <origin xyz="0.101 -0.002 -1.486512" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
     <material name="silver"/>
   </visual>
   <collision>
     <origin xyz="0.101 -0.002 -1.486512" rpy="0 0 0"/>
     <geometry>
-      <mesh filename="file://$(find modubot_model_description)/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
+      <mesh filename="package://modubot_model_description/meshes/camera_1.stl" scale="0.001 0.001 0.001"/>
     </geometry>
   </collision>
 </link>

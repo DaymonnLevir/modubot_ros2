@@ -11,6 +11,7 @@ setup(
     version='0.0.1',
     packages=[package_name],
     install_requires=['setuptools', 'pyserial'],
+    tests_require=['pytest'],
     zip_safe=True,
     maintainer='levir',
     maintainer_email='levir@example.com',
