@@ -1,25 +1,63 @@
-# ROS2/colcon
-modubot_ws/build/
-modubot_ws/install/
-modubot_ws/log/
-modubot_ws/calibration_data/
+# ROS 2 / colcon outputs (repository root or nested workspace)
+/build/
+/install/
+/log/
+/modubot_ws/build/
+/modubot_ws/install/
+/modubot_ws/log/
 
-# editor swap
-*.swp
-*.swo
+# Generated experiment data
+/modubot_ws/calibration_data/
+/modubot_ws/trajectory_data/
+/modubot_ws/step_data/
+/modubot_ws/nav2_experiment_data/
+/Firmware_Esp32/ModubotFirmwarePID/ensaio_*.csv
+/Firmware_Esp32/ModubotFirmwarePID/jitter_*.csv
 
-# VSCode/IDE
+# Generated ROS diagnostics and bags
+/modubot_ws/frames_*.gv
+/modubot_ws/frames_*.pdf
+/.ros/
+rosbag2_*/
+*.bag
+*.db3
+*.mcap
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.codex_pytest_tmp/
+.tox/
+.nox/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+
+# Arduino / PlatformIO build products
+.pio/
+*.elf
+*.hex
+
+# Editors and operating systems
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
 
-# python cache
-__pycache__/
-*.pyc
-
-# env/secrets
+# Environment files and credentials
 .env
+.env.*
 *.key
 *.pem
 
-# temp
+# Temporary files
 *.tmp
+*.bak

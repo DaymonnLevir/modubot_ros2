@@ -1,3 +1,0 @@
-[console_scripts]
-cmdvel_to_serial = modubot_teleop.cmdvel_to_serial:main
-

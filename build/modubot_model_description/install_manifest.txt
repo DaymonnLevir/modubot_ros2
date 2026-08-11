@@ -1,2 +1,0 @@
-/workspace/install/modubot_model_description/share/modubot_model_description/urdf/modubot.urdf.xacro
-/workspace/install/modubot_model_description/share/modubot_model_description/meshes/Chassi_interno_modubot.stl
