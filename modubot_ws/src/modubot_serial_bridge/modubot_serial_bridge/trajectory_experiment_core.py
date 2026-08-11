@@ -18,6 +18,7 @@ class TrajectoryRun:
     trajectory: str
     repetition: int
     target_path_length_m: float
+    target_yaw_rad: float
     curvature_per_m: float
     target_linear_speed_mps: float
     target_left_speed_mps: float
@@ -32,6 +33,8 @@ class OdometryState:
     y_m: float = 0.0
     yaw_rad: float = 0.0
     path_length_m: float = 0.0
+    angular_travel_rad: float = 0.0
+    angular_displacement_rad: float = 0.0
 
 
 def wrap_angle(angle: float) -> float:
@@ -67,6 +70,8 @@ def integrate_differential_drive(
     state.y_m += center_distance * math.sin(midpoint_heading)
     state.yaw_rad = wrap_angle(state.yaw_rad + heading_change)
     state.path_length_m += abs(center_distance)
+    state.angular_travel_rad += abs(heading_change)
+    state.angular_displacement_rad += heading_change
     return state
 
 
@@ -80,13 +85,17 @@ def build_trajectory_plan(
     wheel_separation_m: float,
     order: str = 'randomized',
     seed: int = 42,
+    rotation_angle_rad: float = math.pi / 2.0,
+    angular_speed_rps: float = 0.4,
 ) -> List[TrajectoryRun]:
-    """Build a balanced plan of straight and constant-curvature runs."""
+    """Build a balanced plan of straight, arc, and in-place rotation runs."""
     plan: List[TrajectoryRun] = []
     labels = {
         'straight': 'STRAIGHT',
         'arc_left': 'ARC_LEFT',
         'arc_right': 'ARC_RIGHT',
+        'rotation_left': 'ROTATION_LEFT',
+        'rotation_right': 'ROTATION_RIGHT',
     }
     for repetition in range(1, repetitions + 1):
         for trajectory in trajectories:
@@ -95,24 +104,39 @@ def build_trajectory_plan(
             if trajectory == 'straight':
                 curvature = 0.0
                 path_length = straight_distance_m
-            else:
+                target_yaw = 0.0
+                target_linear_speed = linear_speed_mps
+                left_speed = linear_speed_mps
+                right_speed = linear_speed_mps
+            elif trajectory in {'arc_left', 'arc_right'}:
                 sign = 1.0 if trajectory == 'arc_left' else -1.0
                 curvature = sign / arc_radius_m
                 path_length = arc_length_m
-            left_speed = linear_speed_mps * (
-                1.0 - curvature * wheel_separation_m / 2.0
-            )
-            right_speed = linear_speed_mps * (
-                1.0 + curvature * wheel_separation_m / 2.0
-            )
+                target_yaw = curvature * path_length
+                target_linear_speed = linear_speed_mps
+                left_speed = linear_speed_mps * (
+                    1.0 - curvature * wheel_separation_m / 2.0
+                )
+                right_speed = linear_speed_mps * (
+                    1.0 + curvature * wheel_separation_m / 2.0
+                )
+            else:
+                sign = 1.0 if trajectory == 'rotation_left' else -1.0
+                curvature = 0.0
+                path_length = 0.0
+                target_yaw = sign * rotation_angle_rad
+                target_linear_speed = 0.0
+                left_speed = -sign * angular_speed_rps * wheel_separation_m / 2.0
+                right_speed = sign * angular_speed_rps * wheel_separation_m / 2.0
             plan.append(
                 TrajectoryRun(
                     run_id=f'{labels[trajectory]}_R{repetition:02d}',
                     trajectory=trajectory,
                     repetition=repetition,
                     target_path_length_m=path_length,
+                    target_yaw_rad=target_yaw,
                     curvature_per_m=curvature,
-                    target_linear_speed_mps=linear_speed_mps,
+                    target_linear_speed_mps=target_linear_speed,
                     target_left_speed_mps=left_speed,
                     target_right_speed_mps=right_speed,
                 )

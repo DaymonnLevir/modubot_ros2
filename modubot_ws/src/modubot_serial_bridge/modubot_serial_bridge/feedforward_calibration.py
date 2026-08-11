@@ -22,6 +22,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+from .experiment_support import (
+    SummaryTable,
+    battery_statistics,
+    csv_value,
+    execution_run_id,
+    parse_battery_line,
+)
+
 try:
     import serial
 except ImportError:
@@ -38,12 +46,14 @@ else:
 CALIBRATION_EXCEPTIONS = (RuntimeError,) + SERIAL_EXCEPTIONS
 
 
-SCRIPT_VERSION = '1.2.0'
-DEFAULT_LEVELS = '0.05,0.075,0.10,0.125,0.15,0.175,0.20,0.25,0.30'
+SCRIPT_VERSION = '1.3.0'
+DEFAULT_LEVELS = '0.02,0.03,0.04,0.05,0.075,0.10,0.20,0.30'
 
 SAMPLE_FIELDS = [
     'timestamp_utc',
     'run_id',
+    'planned_run_id',
+    'attempt',
     'direction',
     'mode',
     'level_index',
@@ -65,10 +75,13 @@ SAMPLE_FIELDS = [
     'speed_right_mps',
     'body_linear_mps',
     'body_angular_rps',
+    'battery_voltage_v',
 ]
 
 SUMMARY_FIELDS = [
     'run_id',
+    'planned_run_id',
+    'attempt',
     'status',
     'direction',
     'mode',
@@ -99,6 +112,13 @@ SUMMARY_FIELDS = [
     'body_angular_mean_rps',
     'left_right_difference_mps',
     'asymmetry_percent',
+    'battery_samples',
+    'battery_start_v',
+    'battery_end_v',
+    'battery_mean_v',
+    'battery_min_v',
+    'battery_max_v',
+    'battery_drop_v',
     'sample_file',
 ]
 
@@ -254,14 +274,6 @@ def descriptive_stats(values: Sequence[float]) -> Dict[str, Optional[float]]:
     }
 
 
-def csv_value(value: object) -> object:
-    if value is None:
-        return ''
-    if isinstance(value, float):
-        return f'{value:.9f}'
-    return value
-
-
 class Esp32Serial:
     """Exclusive command and telemetry connection to the ModuBot ESP32."""
 
@@ -329,6 +341,20 @@ class Esp32Serial:
             'Confirm that the selected device is the ModuBot ESP32.'
         )
 
+    def wait_for_battery(self, timeout: float) -> float:
+        """Wait for one valid battery report before an experiment starts."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            for line in self.read_lines():
+                voltage = parse_battery_line(line)
+                if voltage is not None:
+                    return voltage
+            time.sleep(0.01)
+        raise RuntimeError(
+            'The serial port did not produce BAT:<volts> telemetry. Upload '
+            'the ModubotFirmwarePID_Battery firmware and check its sensor.'
+        )
+
     def close(self) -> None:
         self.stop()
         self.serial.close()
@@ -341,35 +367,28 @@ class CampaignRunner:
         self.samples_dir = output_dir / 'samples'
         self.samples_dir.mkdir(parents=True, exist_ok=False)
         self.summary_path = output_dir / 'summary.csv'
-        self.summary_stream = self.summary_path.open(
-            'w', newline='', encoding='utf-8'
-        )
-        self.summary_writer = csv.DictWriter(
-            self.summary_stream, fieldnames=SUMMARY_FIELDS
-        )
-        self.summary_writer.writeheader()
-        self.summary_stream.flush()
+        self.summary_table = SummaryTable(self.summary_path, SUMMARY_FIELDS)
         self.link = Esp32Serial(args.port, args.baud, args.startup_wait)
         print('Waiting for ESP32 odometry telemetry before enabling commands...')
         try:
             first_telemetry = self.link.wait_for_telemetry(
                 args.preflight_timeout
             )
+            first_battery = self.link.wait_for_battery(
+                args.battery_timeout
+            )
         except RuntimeError:
             self.link.close()
-            self.summary_stream.close()
             raise
         print(
             'ESP32 telemetry confirmed: '
             f'O {first_telemetry[0]} {first_telemetry[1]} '
             f'{first_telemetry[2]}'
         )
+        print(f'Battery telemetry confirmed: {first_battery:.2f} V')
 
     def close(self) -> None:
-        try:
-            self.link.close()
-        finally:
-            self.summary_stream.close()
+        self.link.close()
 
     def _phase_command(self, phase: str, run: PlannedRun) -> Tuple[float, float]:
         if phase == 'command':
@@ -382,12 +401,17 @@ class CampaignRunner:
         sign = 1.0 if run.direction == 'forward' else -1.0
         return sign * run.magnitude * self.args.v_wheel_max
 
-    def execute(self, run: PlannedRun) -> Dict[str, object]:
-        sample_path = self.samples_dir / f'{run.run_id}.csv'
+    def execute(
+        self, run: PlannedRun, attempt: int = 1
+    ) -> Dict[str, object]:
+        current_run_id = execution_run_id(run.run_id, attempt)
+        sample_path = self.samples_dir / f'{current_run_id}.csv'
         steady_left: List[float] = []
         steady_right: List[float] = []
         steady_linear: List[float] = []
         steady_angular: List[float] = []
+        battery_values: List[float] = []
+        latest_battery: Optional[float] = None
         self.link.stop()
         self.link.clear_input()
         run_start = time.monotonic()
@@ -426,6 +450,11 @@ class CampaignRunner:
                             next_send = now + 1.0 / self.args.send_rate
 
                         for line in self.link.read_lines():
+                            battery_voltage = parse_battery_line(line)
+                            if battery_voltage is not None:
+                                latest_battery = battery_voltage
+                                battery_values.append(battery_voltage)
+                                continue
                             parsed = parse_odom_line(line)
                             if parsed is None:
                                 continue
@@ -456,7 +485,9 @@ class CampaignRunner:
                                 'timestamp_utc': datetime.now(
                                     timezone.utc
                                 ).isoformat(),
-                                'run_id': run.run_id,
+                                'run_id': current_run_id,
+                                'planned_run_id': run.run_id,
+                                'attempt': attempt,
                                 'direction': run.direction,
                                 'mode': run.mode,
                                 'level_index': run.level_index,
@@ -486,6 +517,7 @@ class CampaignRunner:
                                 'speed_right_mps': speed_right,
                                 'body_linear_mps': body_linear,
                                 'body_angular_rps': body_angular,
+                                'battery_voltage_v': latest_battery,
                             }
                             writer.writerow(
                                 {key: csv_value(value) for key, value in row.items()}
@@ -536,7 +568,9 @@ class CampaignRunner:
                 asymmetry = 100.0 * difference / denominator
 
         summary: Dict[str, object] = {
-            'run_id': run.run_id,
+            'run_id': current_run_id,
+            'planned_run_id': run.run_id,
+            'attempt': attempt,
             'status': 'completed' if steady_left else 'no_steady_samples',
             'direction': run.direction,
             'mode': run.mode,
@@ -571,12 +605,10 @@ class CampaignRunner:
             'body_angular_mean_rps': mean_angular,
             'left_right_difference_mps': difference,
             'asymmetry_percent': asymmetry,
+            **battery_statistics(battery_values),
             'sample_file': str(sample_path.relative_to(self.output_dir)),
         }
-        self.summary_writer.writerow(
-            {key: csv_value(value) for key, value in summary.items()}
-        )
-        self.summary_stream.flush()
+        self.summary_table.append(summary)
         return summary
 
     def record_skipped(self, run: PlannedRun) -> None:
@@ -610,10 +642,15 @@ class CampaignRunner:
                 'steady_samples': 0,
             }
         )
-        self.summary_writer.writerow(
-            {key: csv_value(value) for key, value in row.items()}
-        )
-        self.summary_stream.flush()
+        row['planned_run_id'] = run.run_id
+        row['attempt'] = 0
+        self.summary_table.append(row)
+
+    def supersede(self, execution_id: str) -> None:
+        if not self.summary_table.supersede(execution_id):
+            raise RuntimeError(
+                f'Could not mark {execution_id} as repeated.'
+            )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -630,15 +667,16 @@ def build_parser() -> argparse.ArgumentParser:
         '--direction', choices=['forward', 'reverse', 'both'], default='forward'
     )
     parser.add_argument('--mode', choices=['both', 'left', 'right'], default='both')
-    parser.add_argument('--repetitions', type=int, default=3)
+    parser.add_argument('--repetitions', type=int, default=5)
     parser.add_argument('--pre-time', type=float, default=2.0)
-    parser.add_argument('--command-time', type=float, default=8.0)
+    parser.add_argument('--command-time', type=float, default=6.0)
     parser.add_argument('--post-time', type=float, default=2.0)
     parser.add_argument('--steady-start', type=float, default=3.0)
     parser.add_argument('--steady-end-margin', type=float, default=0.5)
     parser.add_argument('--send-rate', type=float, default=20.0)
     parser.add_argument('--odom-timeout', type=float, default=1.0)
     parser.add_argument('--preflight-timeout', type=float, default=3.0)
+    parser.add_argument('--battery-timeout', type=float, default=3.0)
     parser.add_argument('--startup-wait', type=float, default=2.0)
     parser.add_argument('--ticks-left', type=float, default=91.0)
     parser.add_argument('--ticks-right', type=float, default=91.0)
@@ -680,6 +718,7 @@ def validate_args(args: argparse.Namespace) -> None:
         'send_rate': args.send_rate,
         'odom_timeout': args.odom_timeout,
         'preflight_timeout': args.preflight_timeout,
+        'battery_timeout': args.battery_timeout,
         'ticks_left': args.ticks_left,
         'ticks_right': args.ticks_right,
         'wheel_radius_left': args.wheel_radius_left,
@@ -738,6 +777,7 @@ def write_metadata(
             'command': 'V <normalized_left> <normalized_right>',
             'stop': 'S',
             'telemetry': 'O <delta_ticks_left> <delta_ticks_right> <dt_ms>',
+            'battery': 'BAT:<voltage_v>',
         },
         'notes': [
             'Nominal voltage is calculated from DAC/255*reference voltage; '
@@ -760,6 +800,9 @@ def write_metadata(
 
 def print_summary(summary: Dict[str, object]) -> None:
     print(f"\nCompleted {summary['run_id']} ({summary['steady_samples']} samples)")
+    battery = summary['battery_mean_v']
+    if battery is not None:
+        print(f'  Battery mean: {float(battery):.2f} V')
     if summary['speed_left_mean_mps'] is None:
         print('  No steady-state samples were available.')
         return
@@ -790,18 +833,23 @@ def confirm_campaign_start(args: argparse.Namespace) -> bool:
     return confirmation == 'INICIAR'
 
 
-def next_run_action(args: argparse.Namespace) -> str:
+def next_run_action(
+    args: argparse.Namespace, repeat_run_id: Optional[str] = None
+) -> str:
     """Return the operator action, or run immediately in automatic mode."""
     if args.automatic:
         return 'run'
+    repeat_help = f', r=repeat {repeat_run_id}' if repeat_run_id else ''
     response = input(
         'Reposition the robot and clear the area. '
-        'ENTER=run, s=skip, q=finish: '
+        f'ENTER=run, s=skip, q=finish{repeat_help}: '
     ).strip().lower()
     if response == 'q':
         return 'finish'
     if response == 's':
         return 'skip'
+    if response == 'r' and repeat_run_id:
+        return 'repeat'
     return 'run'
 
 
@@ -831,26 +879,51 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     runner: Optional[CampaignRunner] = None
     try:
         runner = CampaignRunner(args, output_dir)
-        for index, run in enumerate(plan, start=1):
+        index = 0
+        attempts: Dict[str, int] = {}
+        last_run: Optional[PlannedRun] = None
+        last_execution_id: Optional[str] = None
+        while index < len(plan):
+            run = plan[index]
             dac = norm_to_dac(run.magnitude)
             voltage = dac_to_nominal_voltage(
                 dac, args.dac_reference_voltage
             )
             print(
-                f'\n[{index}/{len(plan)}] Next: {run.run_id}\n'
+                f'\n[{index + 1}/{len(plan)}] Next: {run.run_id}\n'
                 f'  direction={run.direction}, L={run.command_left:+.3f}, '
                 f'R={run.command_right:+.3f}\n'
                 f'  DAC={dac}, nominal voltage={voltage:.3f} V, '
                 f'duration={args.command_time:.1f} s'
             )
-            action = next_run_action(args)
+            action = next_run_action(args, last_execution_id)
             if action == 'finish':
                 break
+            if action == 'repeat':
+                if last_run is None or last_execution_id is None:
+                    continue
+                runner.supersede(last_execution_id)
+                run = last_run
+                attempt = attempts[run.run_id] + 1
+                attempts[run.run_id] = attempt
+                print(f'Repeating {run.run_id} as attempt {attempt}.')
+                summary = runner.execute(run, attempt)
+                last_execution_id = str(summary['run_id'])
+                print_summary(summary)
+                continue
             if action == 'skip':
                 runner.record_skipped(run)
+                last_run = None
+                last_execution_id = None
+                index += 1
                 continue
-            summary = runner.execute(run)
+            attempt = attempts.get(run.run_id, 0) + 1
+            attempts[run.run_id] = attempt
+            summary = runner.execute(run, attempt)
             print_summary(summary)
+            last_run = run
+            last_execution_id = str(summary['run_id'])
+            index += 1
     except KeyboardInterrupt:
         print('\nEmergency interruption received; sending brake command.')
         return_code = 130

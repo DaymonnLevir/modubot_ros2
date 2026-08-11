@@ -47,6 +47,16 @@ def generate_launch_description():
         parameters=[params_file],
     )
 
+    battery_monitor = Node(
+        package='modubot_battery_monitor',
+        executable='battery_monitor',
+        name='battery_monitor',
+        output='screen',
+        respawn=True,
+        respawn_delay=1.0,
+        parameters=[params_file],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument('port', default_value='/dev/ttyUSB0'),
         DeclareLaunchArgument('baud', default_value='115200'),
@@ -55,4 +65,5 @@ def generate_launch_description():
         DeclareLaunchArgument('params_file', default_value=default_params),
         bridge,
         odometry,
+        battery_monitor,
     ])

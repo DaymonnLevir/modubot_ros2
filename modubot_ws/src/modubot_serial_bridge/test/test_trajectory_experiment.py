@@ -27,6 +27,14 @@ def test_differential_drive_integration():
     assert state.path_length_m == pytest.approx(1.0)
 
 
+def test_signed_angular_displacement_is_not_absolute_travel():
+    state = OdometryState()
+    integrate_differential_drive(state, -0.1, 0.1, 0.2)
+    integrate_differential_drive(state, 0.02, -0.02, 0.2)
+    assert state.angular_displacement_rad == pytest.approx(0.8)
+    assert state.angular_travel_rad == pytest.approx(1.2)
+
+
 def test_randomized_plan_is_reproducible():
     arguments = dict(
         trajectories=['straight', 'arc_left', 'arc_right'],
@@ -43,6 +51,31 @@ def test_randomized_plan_is_reproducible():
     second = build_trajectory_plan(**arguments)
     assert [run.run_id for run in first] == [run.run_id for run in second]
     assert len(first) == 9
+
+
+def test_in_place_rotations_have_opposite_wheel_speeds():
+    runs = build_trajectory_plan(
+        trajectories=['rotation_left', 'rotation_right'],
+        repetitions=1,
+        straight_distance_m=1.5,
+        arc_length_m=0.8,
+        arc_radius_m=0.8,
+        linear_speed_mps=0.2,
+        wheel_separation_m=0.207,
+        order='interleaved',
+        rotation_angle_rad=math.pi / 2.0,
+        angular_speed_rps=0.4,
+    )
+    left, right = runs
+    assert left.target_path_length_m == 0.0
+    assert left.target_yaw_rad == pytest.approx(math.pi / 2.0)
+    assert left.target_left_speed_mps == pytest.approx(
+        -left.target_right_speed_mps
+    )
+    assert right.target_yaw_rad == pytest.approx(-math.pi / 2.0)
+    assert right.target_left_speed_mps == pytest.approx(
+        -right.target_right_speed_mps
+    )
 
 
 def test_feedforward_map_interpolates_each_wheel(tmp_path):

@@ -35,3 +35,11 @@ serial_odom:
     publish_rate: 20.0
     velocity_timeout: 0.2
     debug: false
+
+battery_monitor:
+  ros__parameters:
+    serial_rx_topic: /modubot/serial_rx
+    battery_voltage_min: 18.0
+    battery_voltage_max: 25.0
+    soc_alpha: 0.05
+    design_capacity: 5.0

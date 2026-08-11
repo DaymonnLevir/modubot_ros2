@@ -26,6 +26,10 @@ setup(
             'modubot_serial_bridge.analyze_feedforward_calibration:main',
             'odometry_trajectory_experiment = '
             'modubot_serial_bridge.odometry_trajectory_experiment:main',
+            'pi_step_experiment = '
+            'modubot_serial_bridge.pi_step_experiment:main',
+            'nav2_experiment_recorder = '
+            'modubot_serial_bridge.nav2_experiment_recorder:main',
         ],
     },
     data_files=[
@@ -39,6 +43,7 @@ setup(
                 'package.xml',
                 'CALIBRACAO_FEEDFORWARD.md',
                 'EXPERIMENTO_TRAJETORIA_ODOMETRIA.md',
+                'EXPERIMENTOS_ARTIGO.md',
             ],
         ),
         (

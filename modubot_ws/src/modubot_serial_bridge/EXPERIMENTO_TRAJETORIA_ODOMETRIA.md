@@ -17,12 +17,15 @@ progresso = soma(abs(delta_centro))
 Em uma reta, `progresso` é a distância odométrica percorrida pelo centro do
 robô. Em uma curva, é o comprimento odométrico do arco. O comando de parada é
 enviado na primeira atualização em que esse valor alcança ou ultrapassa o alvo.
-O CSV registra o pequeno excesso causado pela resolução discreta dos ticks.
+Para rotações no lugar, o critério equivalente é a soma do valor absoluto dos
+incrementos angulares. O CSV registra o pequeno excesso causado pela resolução
+discreta dos ticks.
 
 O script também integra x, y e yaw pelo modelo diferencial, mas essas grandezas
 não realimentam o movimento: servem para comparar depois com a trajetória
-extraída do vídeo. Manter a rota depende dos comandos por roda produzidos pelo
-mapa feedforward; não há correção visual online neste experimento.
+extraída do vídeo. A velocidade de cada roda pode ser comandada pelo PI
+embarcado, pelo mapa feedforward ou diretamente em malha aberta; não há correção
+visual online neste experimento.
 
 ## Bancada e vídeo
 
@@ -52,10 +55,11 @@ giro ideal de aproximadamente 57,3 graus e deslocamento de cerca de 0,673 m por
 `cmdvel_to_serial` e `serial_odom_node` antes de executá-lo, pois esses processos
 disputariam a mesma porta.
 
-Não há modo automático no chão. Antes de cada repetição o programa espera que o
-operador reposicione o robô e pressione ENTER. `Ctrl+C`, ausência de telemetria
-ou duração máxima excedida fazem o programa enviar repetidamente o comando de
-parada.
+No modo padrão, antes de cada repetição o programa espera que o operador
+reposicione o robô e pressione ENTER. `R` repete a última execução sem apagar o
+arquivo anterior. O modo `--automatic` elimina os prompts e deve ser usado
+somente em bancada mecanicamente segura. `Ctrl+C`, ausência de telemetria ou
+duração máxima excedida enviam o comando de parada.
 
 ## Compilação
 

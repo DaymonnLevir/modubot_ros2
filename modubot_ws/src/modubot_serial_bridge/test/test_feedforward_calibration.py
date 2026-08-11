@@ -32,3 +32,11 @@ def test_interactive_confirmation_and_actions():
         assert next_run_action(args) == 'finish'
     with patch('builtins.input', return_value=''):
         assert next_run_action(args) == 'run'
+
+
+def test_interactive_repeat_action_requires_a_previous_run():
+    args = argparse.Namespace(automatic=False)
+    with patch('builtins.input', return_value='R'):
+        assert next_run_action(args, 'FWD_BOTH_U0050_R01') == 'repeat'
+    with patch('builtins.input', return_value='R'):
+        assert next_run_action(args) == 'run'
