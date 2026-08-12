@@ -46,8 +46,13 @@ else:
 CALIBRATION_EXCEPTIONS = (RuntimeError,) + SERIAL_EXCEPTIONS
 
 
-SCRIPT_VERSION = '1.3.0'
+SCRIPT_VERSION = '1.4.0'
 DEFAULT_LEVELS = '0.02,0.03,0.04,0.05,0.075,0.10,0.20,0.30'
+
+FIRMWARE_ABORT_PREFIXES = (
+    '# comando incompatível com o modo de controle',
+    '# FALHA_FEEDBACK_',
+)
 
 SAMPLE_FIELDS = [
     'timestamp_utc',
@@ -235,6 +240,24 @@ def parse_odom_line(line: str) -> Optional[Tuple[int, int, int]]:
     return delta_left, delta_right, dt_ms
 
 
+def parse_control_mode_line(line: str) -> Optional[str]:
+    """Return the control mode reported by the ESP32 ``G`` command."""
+    prefix = '# modo='
+    if not line.startswith(prefix):
+        return None
+    mode = line[len(prefix):].split(maxsplit=1)[0].upper()
+    if mode in {'ABERTA', 'FECHADA'}:
+        return mode
+    return None
+
+
+def firmware_abort_reason(line: str) -> Optional[str]:
+    """Return a fatal firmware diagnostic that invalidates the current run."""
+    if line.startswith(FIRMWARE_ABORT_PREFIXES):
+        return line.removeprefix('#').strip()
+    return None
+
+
 def wheel_speed(
     delta_ticks: int,
     dt_ms: int,
@@ -355,6 +378,36 @@ class Esp32Serial:
             'the ModubotFirmwarePID_Battery firmware and check its sensor.'
         )
 
+    def ensure_open_loop(self, timeout: float) -> str:
+        """Select open-loop control and require explicit firmware confirmation."""
+        self.stop()
+        self.clear_input()
+        self.write_line('M 0')
+
+        deadline = time.monotonic() + timeout
+        next_status_request = 0.0
+        last_mode: Optional[str] = None
+        while time.monotonic() < deadline:
+            now = time.monotonic()
+            if now >= next_status_request:
+                self.write_line('G')
+                next_status_request = now + 0.2
+
+            for line in self.read_lines():
+                mode = parse_control_mode_line(line)
+                if mode is None:
+                    continue
+                last_mode = mode
+                if mode == 'ABERTA':
+                    return line
+            time.sleep(0.01)
+
+        observed = f' Last reported mode: {last_mode}.' if last_mode else ''
+        raise RuntimeError(
+            'The ESP32 did not confirm open-loop mode after receiving M 0.'
+            f'{observed} The campaign was not started.'
+        )
+
     def close(self) -> None:
         self.stop()
         self.serial.close()
@@ -377,6 +430,9 @@ class CampaignRunner:
             first_battery = self.link.wait_for_battery(
                 args.battery_timeout
             )
+            mode_status = self.link.ensure_open_loop(
+                args.preflight_timeout
+            )
         except RuntimeError:
             self.link.close()
             raise
@@ -386,6 +442,7 @@ class CampaignRunner:
             f'{first_telemetry[2]}'
         )
         print(f'Battery telemetry confirmed: {first_battery:.2f} V')
+        print(f'ESP32 open-loop mode confirmed: {mode_status}')
 
     def close(self) -> None:
         self.link.close()
@@ -450,6 +507,13 @@ class CampaignRunner:
                             next_send = now + 1.0 / self.args.send_rate
 
                         for line in self.link.read_lines():
+                            abort_reason = firmware_abort_reason(line)
+                            if abort_reason is not None:
+                                raise RuntimeError(
+                                    f'ESP32 reported "{abort_reason}". '
+                                    'The current run is invalid and the robot '
+                                    'was stopped.'
+                                )
                             battery_voltage = parse_battery_line(line)
                             if battery_voltage is not None:
                                 latest_battery = battery_voltage
@@ -774,6 +838,7 @@ def write_metadata(
         'script_version': SCRIPT_VERSION,
         'created_at_utc': datetime.now(timezone.utc).isoformat(),
         'firmware_protocol': {
+            'control_mode': 'M 0 (open loop), confirmed with G',
             'command': 'V <normalized_left> <normalized_right>',
             'stop': 'S',
             'telemetry': 'O <delta_ticks_left> <delta_ticks_right> <dt_ms>',

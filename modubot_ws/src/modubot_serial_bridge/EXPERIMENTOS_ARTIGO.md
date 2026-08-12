@@ -29,7 +29,10 @@ Para haver dados de bateria, carregue o firmware
 O plano recomendado contém oito níveis, cinco repetições e os dois sentidos:
 80 execuções por campanha. Faça campanhas separadas para a condição mecânica
 que será comparada (por exemplo, alinhamento inicial das casters). O CSV de cada
-execução contém todos os ticks, velocidades instantâneas, comando e bateria.
+execução contém todos os ticks, velocidades instantâneas, comando e bateria. O
+programa envia `M 0` e exige a confirmação `modo=ABERTA` da ESP32 antes de
+iniciar; comandos rejeitados pelo firmware abortam a campanha com o robô
+freado.
 
 ```bash
 ros2 run modubot_serial_bridge feedforward_calibration \
