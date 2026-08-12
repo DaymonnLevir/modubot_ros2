@@ -13,10 +13,15 @@ docker run -d \
   --name modubot-face-bridge \
   --restart unless-stopped \
   --network host \
+  -v /home/jetson/RoboDC_face:/opt/modubot/face:ro \
   -e ROS_DOMAIN_ID=0 \
   -e ROSBRIDGE_PORT=19090 \
   modubot-face-rosbridge:humble
 ```
+
+Com esse volume, o mesmo container também serve a aplicação em
+`http://localhost:8080/robot_face.html`. O servidor da página só é iniciado
+quando `robot_face.html` estiver presente no diretório montado.
 
 Depois de compilar e carregar o workspace, envie um estado de teste:
 
