@@ -30,6 +30,7 @@ setup(
             'modubot_serial_bridge.pi_step_experiment:main',
             'nav2_experiment_recorder = '
             'modubot_serial_bridge.nav2_experiment_recorder:main',
+            'face_command = modubot_serial_bridge.face_command:main',
         ],
     },
     data_files=[
