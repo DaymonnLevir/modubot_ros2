@@ -9,7 +9,10 @@ from launch.actions import (
     UnsetEnvironmentVariable,
 )
 from launch.conditions import IfCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.launch_description_sources import (
+    AnyLaunchDescriptionSource,
+    PythonLaunchDescriptionSource,
+)
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -188,7 +191,21 @@ def generate_launch_description():
         ],
     )
 
-    # F. Interface Visual (RViz)
+    # F. Rosbridge usado pelo aplicativo e pela face
+    rosbridge = IncludeLaunchDescription(
+        AnyLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('rosbridge_server'),
+                'launch',
+                'rosbridge_websocket_launch.xml',
+            )
+        ),
+        launch_arguments={
+            'port': LaunchConfiguration('rosbridge_port'),
+        }.items(),
+    )
+
+    # G. Interface Visual (RViz)
     node_rviz = Node(
         package="rviz2",
         executable="rviz2",
@@ -206,6 +223,7 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("closed_loop", default_value="true"),
         DeclareLaunchArgument("use_rviz", default_value="false"),
+        DeclareLaunchArgument("rosbridge_port", default_value="9090"),
         DeclareLaunchArgument("base_port", default_value="/dev/ttyUSB0"),
         DeclareLaunchArgument("lidar_port", default_value="/dev/ttyUSB1"),
         DeclareLaunchArgument("lidar_minimum_range", default_value="0.15"),
@@ -232,6 +250,7 @@ def generate_launch_description():
         node_robot_state_publisher,
         node_joint_state_publisher,
         node_script_filter,
+        rosbridge,
         delayed_collision_monitor,
         delayed_nav2_bringup,
         delayed_rviz
