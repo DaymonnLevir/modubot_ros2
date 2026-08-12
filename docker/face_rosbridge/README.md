@@ -1,9 +1,9 @@
-# Rosbridge da face do ModuBot
+# Rosbridge do aplicativo RoboDC
 
-A aplicação Rive em `RoboDC_face/teste.html` conecta em
-`ws://localhost:19090` e assina `/robot/face_state` como `std_msgs/String`.
-O conteúdo da string é um objeto JSON com `talking`, `dir`, `blink`, `exp`,
-`color`, `pauseLook` e `pauseBlink`.
+O aplicativo em `RoboDC/src/app/services/face-api.service.ts` conecta ao
+rosbridge na porta `9090` e publica em `/robot/face_state`. A mensagem é
+`std_msgs/String`; seu conteúdo é um objeto JSON com `talking`, `dir`,
+`blink`, `exp`, `color`, `pauseLook` e `pauseBlink`.
 
 Na Jetson, construa e mantenha o serviço no domínio ROS 2 da base:
 
@@ -13,15 +13,10 @@ docker run -d \
   --name modubot-face-bridge \
   --restart unless-stopped \
   --network host \
-  -v /home/jetson/RoboDC_face:/opt/modubot/face:ro \
   -e ROS_DOMAIN_ID=0 \
-  -e ROSBRIDGE_PORT=19090 \
+  -e ROSBRIDGE_PORT=9090 \
   modubot-face-rosbridge:humble
 ```
-
-Com esse volume, o mesmo container também serve a aplicação em
-`http://localhost:8080/robot_face.html`. O servidor da página só é iniciado
-quando `robot_face.html` estiver presente no diretório montado.
 
 Depois de compilar e carregar o workspace, envie um estado de teste:
 
