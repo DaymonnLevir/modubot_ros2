@@ -23,6 +23,9 @@ class TrajectoryRun:
     target_linear_speed_mps: float
     target_left_speed_mps: float
     target_right_speed_mps: float
+    figure_eight_radius_m: float = 0.0
+    figure_eight_cycles: int = 0
+    figure_eight_start_direction: str = ''
 
 
 @dataclass
@@ -52,6 +55,48 @@ def desired_pose(
     x_m = math.sin(heading) / curvature_per_m
     y_m = (1.0 - math.cos(heading)) / curvature_per_m
     return x_m, y_m, heading
+
+
+def trajectory_segment_index(run: TrajectoryRun, progress_m: float) -> int:
+    """Return the zero-based active segment of a composite trajectory."""
+    if run.trajectory != 'figure_eight':
+        return 0
+    segment_length = 2.0 * math.pi * run.figure_eight_radius_m
+    segment_count = 2 * run.figure_eight_cycles
+    if segment_length <= 0.0 or segment_count <= 0:
+        raise ValueError('Invalid figure-eight trajectory definition.')
+    progress = max(0.0, min(progress_m, run.target_path_length_m))
+    return min(int(progress / segment_length), segment_count - 1)
+
+
+def wheel_speed_segments(
+    run: TrajectoryRun,
+) -> List[Tuple[float, float]]:
+    """Return the distinct wheel-speed pairs used during one run."""
+    first = (run.target_left_speed_mps, run.target_right_speed_mps)
+    if run.trajectory != 'figure_eight':
+        return [first]
+    return [first, (first[1], first[0])]
+
+
+def desired_pose_for_run(
+    run: TrajectoryRun, progress_m: float
+) -> Tuple[float, float, float]:
+    """Return the ideal pose for simple or composite trajectory progress."""
+    progress = max(0.0, min(progress_m, run.target_path_length_m))
+    if run.trajectory != 'figure_eight':
+        return desired_pose(progress, run.curvature_per_m)
+
+    segment_length = 2.0 * math.pi * run.figure_eight_radius_m
+    segment = trajectory_segment_index(run, progress)
+    local_progress = progress - segment * segment_length
+    initial_sign = 1.0 if run.curvature_per_m >= 0.0 else -1.0
+    segment_sign = initial_sign if segment % 2 == 0 else -initial_sign
+    x_m, y_m, yaw_rad = desired_pose(
+        local_progress,
+        segment_sign / run.figure_eight_radius_m,
+    )
+    return x_m, y_m, wrap_angle(yaw_rad)
 
 
 def integrate_differential_drive(
@@ -87,8 +132,20 @@ def build_trajectory_plan(
     seed: int = 42,
     rotation_angle_rad: float = math.pi / 2.0,
     angular_speed_rps: float = 0.4,
+    figure_eight_radius_m: float = 0.35,
+    figure_eight_cycles: int = 1,
+    figure_eight_start_direction: str = 'left',
 ) -> List[TrajectoryRun]:
-    """Build a balanced plan of straight, arc, and in-place rotation runs."""
+    """Build a balanced plan of finite simple and figure-eight runs."""
+    if 'figure_eight' in trajectories:
+        if figure_eight_radius_m <= 0.0:
+            raise ValueError('figure_eight_radius_m must be positive.')
+        if figure_eight_cycles <= 0:
+            raise ValueError('figure_eight_cycles must be positive.')
+        if figure_eight_start_direction not in {'left', 'right'}:
+            raise ValueError(
+                'figure_eight_start_direction must be left or right.'
+            )
     plan: List[TrajectoryRun] = []
     labels = {
         'straight': 'STRAIGHT',
@@ -96,6 +153,7 @@ def build_trajectory_plan(
         'arc_right': 'ARC_RIGHT',
         'rotation_left': 'ROTATION_LEFT',
         'rotation_right': 'ROTATION_RIGHT',
+        'figure_eight': 'FIGURE_EIGHT',
     }
     for repetition in range(1, repetitions + 1):
         for trajectory in trajectories:
@@ -120,7 +178,7 @@ def build_trajectory_plan(
                 right_speed = linear_speed_mps * (
                     1.0 + curvature * wheel_separation_m / 2.0
                 )
-            else:
+            elif trajectory in {'rotation_left', 'rotation_right'}:
                 sign = 1.0 if trajectory == 'rotation_left' else -1.0
                 curvature = 0.0
                 path_length = 0.0
@@ -128,9 +186,36 @@ def build_trajectory_plan(
                 target_linear_speed = 0.0
                 left_speed = -sign * angular_speed_rps * wheel_separation_m / 2.0
                 right_speed = sign * angular_speed_rps * wheel_separation_m / 2.0
+            else:
+                sign = (
+                    1.0
+                    if figure_eight_start_direction == 'left'
+                    else -1.0
+                )
+                curvature = sign / figure_eight_radius_m
+                path_length = (
+                    4.0
+                    * math.pi
+                    * figure_eight_radius_m
+                    * figure_eight_cycles
+                )
+                target_yaw = 0.0
+                target_linear_speed = linear_speed_mps
+                left_speed = linear_speed_mps * (
+                    1.0 - curvature * wheel_separation_m / 2.0
+                )
+                right_speed = linear_speed_mps * (
+                    1.0 + curvature * wheel_separation_m / 2.0
+                )
             plan.append(
                 TrajectoryRun(
-                    run_id=f'{labels[trajectory]}_R{repetition:02d}',
+                    run_id=(
+                        f'{labels[trajectory]}_'
+                        f'{figure_eight_start_direction.upper()}_'
+                        f'C{figure_eight_cycles:02d}_R{repetition:02d}'
+                        if trajectory == 'figure_eight'
+                        else f'{labels[trajectory]}_R{repetition:02d}'
+                    ),
                     trajectory=trajectory,
                     repetition=repetition,
                     target_path_length_m=path_length,
@@ -139,6 +224,21 @@ def build_trajectory_plan(
                     target_linear_speed_mps=target_linear_speed,
                     target_left_speed_mps=left_speed,
                     target_right_speed_mps=right_speed,
+                    figure_eight_radius_m=(
+                        figure_eight_radius_m
+                        if trajectory == 'figure_eight'
+                        else 0.0
+                    ),
+                    figure_eight_cycles=(
+                        figure_eight_cycles
+                        if trajectory == 'figure_eight'
+                        else 0
+                    ),
+                    figure_eight_start_direction=(
+                        figure_eight_start_direction
+                        if trajectory == 'figure_eight'
+                        else ''
+                    ),
                 )
             )
 

@@ -17,7 +17,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from .feedforward_calibration import (
     CALIBRATION_EXCEPTIONS,
+    EmergencyStopMonitor,
     Esp32Serial,
+    firmware_abort_reason,
     norm_to_dac,
     parse_odom_line,
 )
@@ -34,12 +36,17 @@ from .trajectory_experiment_core import (
     TrajectoryRun,
     build_trajectory_plan,
     commands_for_run,
-    desired_pose,
+    desired_pose_for_run,
     integrate_differential_drive,
+    trajectory_segment_index,
+    wheel_speed_segments,
 )
 
 
-SCRIPT_VERSION = '1.1.0'
+SCRIPT_VERSION = '1.2.0'
+
+CommandPair = Tuple[float, float]
+RunCommands = Dict[str, List[CommandPair]]
 
 SAMPLE_FIELDS = [
     'timestamp_utc',
@@ -49,14 +56,19 @@ SAMPLE_FIELDS = [
     'trajectory',
     'repetition',
     'phase',
+    'trajectory_segment',
+    'figure_eight_cycle',
     'elapsed_run_s',
     'elapsed_phase_s',
     'target_path_length_m',
     'target_yaw_rad',
     'target_curvature_per_m',
+    'active_curvature_per_m',
     'target_linear_speed_mps',
     'target_left_speed_mps',
     'target_right_speed_mps',
+    'active_target_left_speed_mps',
+    'active_target_right_speed_mps',
     'normalized_left',
     'normalized_right',
     'command_type',
@@ -99,6 +111,9 @@ SUMMARY_FIELDS = [
     'target_linear_speed_mps',
     'target_left_speed_mps',
     'target_right_speed_mps',
+    'figure_eight_radius_m',
+    'figure_eight_cycles',
+    'figure_eight_start_direction',
     'normalized_left',
     'normalized_right',
     'command_type',
@@ -145,6 +160,7 @@ def parse_trajectories(value: str) -> List[str]:
             'rotation_right',
             'arc_left',
             'arc_right',
+            'figure_eight',
         ]
     allowed = {
         'straight',
@@ -152,6 +168,7 @@ def parse_trajectories(value: str) -> List[str]:
         'rotation_right',
         'arc_left',
         'arc_right',
+        'figure_eight',
     }
     result: List[str] = []
     for token in value.split(','):
@@ -161,7 +178,7 @@ def parse_trajectories(value: str) -> List[str]:
         if name not in allowed:
             raise argparse.ArgumentTypeError(
                 'Trajectories must be straight, rotation_left, '
-                'rotation_right, arc_left, arc_right, or all.'
+                'rotation_right, arc_left, arc_right, figure_eight, or all.'
             )
         if name not in result:
             result.append(name)
@@ -175,8 +192,8 @@ def parse_trajectories(value: str) -> List[str]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            'Drive straight, rotation, or constant-curvature paths and stop '
-            'from integrated wheel odometry.'
+            'Drive straight, rotation, constant-curvature, or figure-eight '
+            'paths and stop from integrated wheel odometry.'
         )
     )
     parser.add_argument('--port', default='/dev/ttyUSB0')
@@ -188,6 +205,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--distance', type=float, default=1.5)
     parser.add_argument('--arc-length', type=float, default=0.8)
     parser.add_argument('--arc-radius', type=float, default=0.8)
+    parser.add_argument('--figure-eight-radius', type=float, default=0.35)
+    parser.add_argument('--figure-eight-cycles', type=int, default=1)
+    parser.add_argument(
+        '--figure-eight-start-direction',
+        choices=['left', 'right'],
+        default='left',
+    )
     parser.add_argument('--linear-speed', type=float, default=0.25)
     parser.add_argument('--rotation-angle-deg', type=float, default=90.0)
     parser.add_argument('--angular-speed', type=float, default=0.4)
@@ -215,7 +239,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--countdown', type=int, default=3)
     parser.add_argument('--send-rate', type=float, default=20.0)
     parser.add_argument('--odom-timeout', type=float, default=1.0)
-    parser.add_argument('--max-duration', type=float, default=20.0)
+    parser.add_argument('--max-duration', type=float, default=60.0)
     parser.add_argument('--preflight-timeout', type=float, default=3.0)
     parser.add_argument('--battery-timeout', type=float, default=3.0)
     parser.add_argument('--startup-wait', type=float, default=2.0)
@@ -255,6 +279,8 @@ def validate_args(args: argparse.Namespace) -> None:
         'distance': args.distance,
         'arc_length': args.arc_length,
         'arc_radius': args.arc_radius,
+        'figure_eight_radius': args.figure_eight_radius,
+        'figure_eight_cycles': args.figure_eight_cycles,
         'linear_speed': args.linear_speed,
         'rotation_angle_deg': args.rotation_angle_deg,
         'angular_speed': args.angular_speed,
@@ -294,7 +320,7 @@ def validate_args(args: argparse.Namespace) -> None:
 
 def prepare_plan(
     args: argparse.Namespace,
-) -> Tuple[List[TrajectoryRun], Dict[str, Tuple[float, float]]]:
+) -> Tuple[List[TrajectoryRun], RunCommands]:
     calibration = (
         FeedforwardMap.from_csv(args.feedforward_map)
         if args.feedforward_map is not None
@@ -312,39 +338,56 @@ def prepare_plan(
         seed=args.seed,
         rotation_angle_rad=math.radians(args.rotation_angle_deg),
         angular_speed_rps=args.angular_speed,
+        figure_eight_radius_m=args.figure_eight_radius,
+        figure_eight_cycles=args.figure_eight_cycles,
+        figure_eight_start_direction=args.figure_eight_start_direction,
     )
-    commands: Dict[str, Tuple[float, float]] = {}
+    commands: RunCommands = {}
     for run in plan:
-        if args.control_mode == 'pi':
-            pair = (
-                run.target_left_speed_mps / args.wheel_radius_left,
-                run.target_right_speed_mps / args.wheel_radius_right,
-            )
-        else:
-            pair = commands_for_run(
-                run, args.control_mode, args.v_wheel_max, calibration
-            )
-        if (
-            args.control_mode != 'pi'
-            and max(abs(pair[0]), abs(pair[1]))
-            > args.max_normalized_command
-        ):
-            raise ValueError(
-                f'{run.run_id} requires commands {pair}, exceeding '
-                f'--max-normalized-command={args.max_normalized_command:.3f}.'
-            )
-        commands[run.run_id] = pair
+        pairs: List[CommandPair] = []
+        for left_speed, right_speed in wheel_speed_segments(run):
+            if args.control_mode == 'pi':
+                pair = (
+                    left_speed / args.wheel_radius_left,
+                    right_speed / args.wheel_radius_right,
+                )
+            else:
+                segment_run = TrajectoryRun(
+                    **{
+                        **asdict(run),
+                        'target_left_speed_mps': left_speed,
+                        'target_right_speed_mps': right_speed,
+                    }
+                )
+                pair = commands_for_run(
+                    segment_run,
+                    args.control_mode,
+                    args.v_wheel_max,
+                    calibration,
+                )
+            if (
+                args.control_mode != 'pi'
+                and max(abs(pair[0]), abs(pair[1]))
+                > args.max_normalized_command
+            ):
+                raise ValueError(
+                    f'{run.run_id} requires commands {pair}, exceeding '
+                    '--max-normalized-command='
+                    f'{args.max_normalized_command:.3f}.'
+                )
+            pairs.append(pair)
+        commands[run.run_id] = pairs
     return plan, commands
 
 
 def print_plan(
     plan: Sequence[TrajectoryRun],
-    commands: Dict[str, Tuple[float, float]],
+    commands: RunCommands,
     args: argparse.Namespace,
 ) -> None:
     print('\nPlanned odometry-stopped runs:')
     for index, run in enumerate(plan, start=1):
-        left, right = commands[run.run_id]
+        left, right = commands[run.run_id][0]
         command_label = 'omega' if args.control_mode == 'pi' else 'u'
         print(
             f'  {index:02d}/{len(plan):02d} {run.run_id}: '
@@ -355,6 +398,15 @@ def print_plan(
             f'vR={run.target_right_speed_mps:.3f} m/s, '
             f'{command_label}L={left:+.4f}, {command_label}R={right:+.4f}'
         )
+        if run.trajectory == 'figure_eight':
+            second_left, second_right = commands[run.run_id][1]
+            print(
+                f'      figure-eight: radius={run.figure_eight_radius_m:.3f} m, '
+                f'cycles={run.figure_eight_cycles}, '
+                f'start={run.figure_eight_start_direction}, '
+                f'segment-2 {command_label}L={second_left:+.4f}, '
+                f'{command_label}R={second_right:+.4f}'
+            )
     print(
         f'  order={args.order}, seed={args.seed}, '
         f'control={args.control_mode}, video={args.video_file}'
@@ -373,7 +425,7 @@ def write_metadata(
     output_dir: Path,
     args: argparse.Namespace,
     plan: Sequence[TrajectoryRun],
-    commands: Dict[str, Tuple[float, float]],
+    commands: RunCommands,
 ) -> None:
     metadata = {
         'script_version': SCRIPT_VERSION,
@@ -402,8 +454,12 @@ def write_metadata(
                     if args.control_mode == 'pi'
                     else 'normalized_dac'
                 ),
-                'command_left': commands[run.run_id][0],
-                'command_right': commands[run.run_id][1],
+                'command_left': commands[run.run_id][0][0],
+                'command_right': commands[run.run_id][0][1],
+                'command_segments': [
+                    {'left': pair[0], 'right': pair[1]}
+                    for pair in commands[run.run_id]
+                ],
             }
             for run in plan
         ],
@@ -453,7 +509,8 @@ class ExperimentRunner:
         phase: str,
         elapsed_run_s: float,
         elapsed_phase_s: float,
-        command: Tuple[float, float],
+        command: CommandPair,
+        trajectory_segment: int,
         telemetry: Tuple[int, int, int],
         state: OdometryState,
         battery_voltage: Optional[float],
@@ -488,10 +545,29 @@ class ExperimentRunner:
                 directed_progress, abs(run.target_yaw_rad)
             )
         else:
-            desired_x, desired_y, desired_yaw = desired_pose(
-                min(state.path_length_m, run.target_path_length_m),
-                run.curvature_per_m,
+            desired_x, desired_y, desired_yaw = desired_pose_for_run(
+                run,
+                state.path_length_m,
             )
+        speed_segments = wheel_speed_segments(run)
+        speed_segment = (
+            trajectory_segment % 2
+            if run.trajectory == 'figure_eight'
+            else 0
+        )
+        active_left_speed, active_right_speed = speed_segments[speed_segment]
+        if run.trajectory == 'figure_eight':
+            initial_sign = 1.0 if run.curvature_per_m >= 0.0 else -1.0
+            active_sign = (
+                initial_sign
+                if trajectory_segment % 2 == 0
+                else -initial_sign
+            )
+            active_curvature = active_sign / run.figure_eight_radius_m
+            figure_eight_cycle: Optional[int] = trajectory_segment // 2 + 1
+        else:
+            active_curvature = run.curvature_per_m
+            figure_eight_cycle = None
         is_pi = self.args.control_mode == 'pi'
         return {
             'timestamp_utc': datetime.now(timezone.utc).isoformat(),
@@ -501,14 +577,19 @@ class ExperimentRunner:
             'trajectory': run.trajectory,
             'repetition': run.repetition,
             'phase': phase,
+            'trajectory_segment': trajectory_segment + 1,
+            'figure_eight_cycle': figure_eight_cycle,
             'elapsed_run_s': elapsed_run_s,
             'elapsed_phase_s': elapsed_phase_s,
             'target_path_length_m': run.target_path_length_m,
             'target_yaw_rad': run.target_yaw_rad,
             'target_curvature_per_m': run.curvature_per_m,
+            'active_curvature_per_m': active_curvature,
             'target_linear_speed_mps': run.target_linear_speed_mps,
             'target_left_speed_mps': run.target_left_speed_mps,
             'target_right_speed_mps': run.target_right_speed_mps,
+            'active_target_left_speed_mps': active_left_speed,
+            'active_target_right_speed_mps': active_right_speed,
             'normalized_left': None if is_pi else command[0],
             'normalized_right': None if is_pi else command[1],
             'command_type': (
@@ -546,7 +627,7 @@ class ExperimentRunner:
     def execute(
         self,
         run: TrajectoryRun,
-        command: Tuple[float, float],
+        commands: Sequence[CommandPair],
         attempt: int = 1,
     ) -> Dict[str, object]:
         current_run_id = execution_run_id(run.run_id, attempt)
@@ -563,8 +644,20 @@ class ExperimentRunner:
         command_stop_utc: Optional[str] = None
         battery_values: List[float] = []
         latest_battery: Optional[float] = None
+        emergency_stopped = False
+        active_command = commands[0]
+        active_segment = 0
 
-        with sample_path.open('w', newline='', encoding='utf-8') as stream:
+        with EmergencyStopMonitor() as emergency, sample_path.open(
+            'w', newline='', encoding='utf-8'
+        ) as stream:
+            if emergency.enabled:
+                print('EMERGENCY STOP armed: press SPACE or E.')
+            else:
+                print(
+                    'WARNING: keyboard emergency stop is unavailable; '
+                    'keep the physical emergency stop accessible.'
+                )
             writer = csv.DictWriter(stream, fieldnames=SAMPLE_FIELDS)
             writer.writeheader()
             try:
@@ -583,6 +676,16 @@ class ExperimentRunner:
                     while True:
                         now = time.monotonic()
                         elapsed_phase = now - phase_start
+                        if emergency.poll():
+                            self.link.stop(repeats=1)
+                            emergency_stopped = True
+                            stop_progress = state.path_length_m
+                            stop_angle = state.angular_displacement_rad
+                            command_elapsed = elapsed_phase
+                            command_stop_utc = datetime.now(
+                                timezone.utc
+                            ).isoformat()
+                            break
                         if (
                             phase == 'pre_stop'
                             and elapsed_phase >= self.args.pre_time
@@ -604,17 +707,36 @@ class ExperimentRunner:
 
                         if now >= next_send:
                             if phase == 'command':
+                                active_segment = trajectory_segment_index(
+                                    run, state.path_length_m
+                                )
+                                command_index = (
+                                    active_segment % 2
+                                    if run.trajectory == 'figure_eight'
+                                    else 0
+                                )
+                                active_command = commands[command_index]
                                 if self.args.control_mode == 'pi':
                                     self.link.write_line(
-                                        f'W {command[0]:.6f} {command[1]:.6f}'
+                                        f'W {active_command[0]:.6f} '
+                                        f'{active_command[1]:.6f}'
                                     )
                                 else:
-                                    self.link.command(command[0], command[1])
+                                    self.link.command(
+                                        active_command[0], active_command[1]
+                                    )
                             else:
                                 self.link.write_line('S')
                             next_send = now + 1.0 / self.args.send_rate
 
                         for line in self.link.read_lines():
+                            abort_reason = firmware_abort_reason(line)
+                            if abort_reason is not None:
+                                raise RuntimeError(
+                                    f'ESP32 reported "{abort_reason}". '
+                                    'The current run is invalid and the robot '
+                                    'was stopped.'
+                                )
                             battery_voltage = parse_battery_line(line)
                             if battery_voltage is not None:
                                 latest_battery = battery_voltage
@@ -625,7 +747,9 @@ class ExperimentRunner:
                                 continue
                             last_odom = time.monotonic()
                             active_command = (
-                                command if phase == 'command' else (0.0, 0.0)
+                                active_command
+                                if phase == 'command'
+                                else (0.0, 0.0)
                             )
                             row = self._sample_row(
                                 run,
@@ -635,6 +759,7 @@ class ExperimentRunner:
                                 now - run_start,
                                 elapsed_phase,
                                 active_command,
+                                active_segment,
                                 telemetry,
                                 state,
                                 latest_battery,
@@ -686,6 +811,8 @@ class ExperimentRunner:
                                 'the robot was stopped.'
                             )
                         time.sleep(0.005)
+                    if emergency_stopped:
+                        break
             finally:
                 self.link.stop()
                 stream.flush()
@@ -694,7 +821,11 @@ class ExperimentRunner:
             'run_id': current_run_id,
             'planned_run_id': run.run_id,
             'attempt': attempt,
-            'status': 'completed',
+            'status': (
+                'emergency_stop_by_operator'
+                if emergency_stopped
+                else 'completed'
+            ),
             'trajectory': run.trajectory,
             'repetition': run.repetition,
             'control_mode': self.args.control_mode,
@@ -704,19 +835,24 @@ class ExperimentRunner:
             'target_linear_speed_mps': run.target_linear_speed_mps,
             'target_left_speed_mps': run.target_left_speed_mps,
             'target_right_speed_mps': run.target_right_speed_mps,
+            'figure_eight_radius_m': run.figure_eight_radius_m,
+            'figure_eight_cycles': run.figure_eight_cycles,
+            'figure_eight_start_direction': (
+                run.figure_eight_start_direction
+            ),
             'normalized_left': (
-                None if self.args.control_mode == 'pi' else command[0]
+                None if self.args.control_mode == 'pi' else commands[0][0]
             ),
             'normalized_right': (
-                None if self.args.control_mode == 'pi' else command[1]
+                None if self.args.control_mode == 'pi' else commands[0][1]
             ),
             'command_type': (
                 'wheel_angular_speed_rps'
                 if self.args.control_mode == 'pi'
                 else 'normalized_dac'
             ),
-            'command_left': command[0],
-            'command_right': command[1],
+            'command_left': commands[0][0],
+            'command_right': commands[0][1],
             'command_start_utc': command_start_utc,
             'command_stop_utc': command_stop_utc,
             'elapsed_command_s': command_elapsed,
@@ -745,7 +881,7 @@ class ExperimentRunner:
             )
 
     def record_skipped(
-        self, run: TrajectoryRun, command: Tuple[float, float]
+        self, run: TrajectoryRun, commands: Sequence[CommandPair]
     ) -> None:
         is_pi = self.args.control_mode == 'pi'
         row = {field: None for field in SUMMARY_FIELDS}
@@ -764,15 +900,20 @@ class ExperimentRunner:
                 'target_linear_speed_mps': run.target_linear_speed_mps,
                 'target_left_speed_mps': run.target_left_speed_mps,
                 'target_right_speed_mps': run.target_right_speed_mps,
-                'normalized_left': None if is_pi else command[0],
-                'normalized_right': None if is_pi else command[1],
+                'figure_eight_radius_m': run.figure_eight_radius_m,
+                'figure_eight_cycles': run.figure_eight_cycles,
+                'figure_eight_start_direction': (
+                    run.figure_eight_start_direction
+                ),
+                'normalized_left': None if is_pi else commands[0][0],
+                'normalized_right': None if is_pi else commands[0][1],
                 'command_type': (
                     'wheel_angular_speed_rps'
                     if is_pi
                     else 'normalized_dac'
                 ),
-                'command_left': command[0],
-                'command_right': command[1],
+                'command_left': commands[0][0],
+                'command_right': commands[0][1],
             }
         )
         self.summary_table.append(row)
@@ -829,6 +970,59 @@ def run_countdown(seconds: int, run_id: str) -> None:
     )
 
 
+def print_run_result(summary: Dict[str, object]) -> None:
+    """Print a video marker and the result of one trajectory attempt."""
+    run_id = str(summary['run_id'])
+    if summary['status'] == 'emergency_stop_by_operator':
+        print(
+            f'VIDEO MARKER: EMERGENCY STOP {run_id}; '
+            f"odometry={float(summary['odom_final_path_m']):.4f} m; "
+            'attempt invalid'
+        )
+        return
+    battery = summary['battery_mean_v']
+    battery_text = (
+        f'{float(battery):.2f}' if battery is not None else 'missing'
+    )
+    print(
+        f'VIDEO MARKER: STOP {run_id}; odometry='
+        f"{float(summary['odom_path_at_stop_m']):.4f} m; "
+        f"duration={float(summary['elapsed_command_s']):.3f} s; "
+        f'battery={battery_text} V'
+    )
+
+
+def execute_with_emergency_retries(
+    runner: ExperimentRunner,
+    args: argparse.Namespace,
+    run: TrajectoryRun,
+    commands: Sequence[CommandPair],
+    attempts: Dict[str, int],
+) -> Tuple[Dict[str, object], str]:
+    """Run one trajectory and preserve emergency-stopped attempts."""
+    while True:
+        attempt = attempts.get(run.run_id, 0) + 1
+        attempts[run.run_id] = attempt
+        current_run_id = execution_run_id(run.run_id, attempt)
+        run_countdown(args.countdown, current_run_id)
+        summary = runner.execute(run, commands, attempt)
+        print_run_result(summary)
+        if summary['status'] != 'emergency_stop_by_operator':
+            return summary, 'completed'
+        if args.automatic:
+            print('Automatic campaign stopped after the emergency command.')
+            return summary, 'finish'
+
+        response = input(
+            'Reposition the robot after the emergency stop. '
+            'ENTER=retry, s=skip this step, q=finish campaign: '
+        ).strip().lower()
+        if response == 'q':
+            return summary, 'finish'
+        if response == 's':
+            return summary, 'skip'
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -868,27 +1062,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if action == 'repeat':
                 if last_run is None or last_execution_id is None:
                     continue
-                runner.supersede(last_execution_id)
                 run = last_run
-                attempt = attempts[run.run_id] + 1
-                attempts[run.run_id] = attempt
-                repeated_id = execution_run_id(run.run_id, attempt)
-                run_countdown(args.countdown, repeated_id)
-                summary = runner.execute(
-                    run, commands[run.run_id], attempt
+                previous_execution_id = last_execution_id
+                summary, outcome = execute_with_emergency_retries(
+                    runner,
+                    args,
+                    run,
+                    commands[run.run_id],
+                    attempts,
                 )
+                if outcome == 'finish':
+                    break
+                if outcome == 'skip':
+                    continue
+                runner.supersede(previous_execution_id)
                 last_execution_id = str(summary['run_id'])
-                battery = summary['battery_mean_v']
-                battery_text = (
-                    f'{float(battery):.2f}'
-                    if battery is not None
-                    else 'missing'
-                )
-                print(
-                    f"VIDEO MARKER: STOP {last_execution_id}; "
-                    f"duration={float(summary['elapsed_command_s']):.3f} s; "
-                    f'battery={battery_text} V'
-                )
                 continue
             if action == 'skip':
                 runner.record_skipped(run, commands[run.run_id])
@@ -896,23 +1084,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 last_execution_id = None
                 index += 1
                 continue
-            attempt = attempts.get(run.run_id, 0) + 1
-            attempts[run.run_id] = attempt
-            current_run_id = execution_run_id(run.run_id, attempt)
-            run_countdown(args.countdown, current_run_id)
-            summary = runner.execute(run, commands[run.run_id], attempt)
-            battery = summary['battery_mean_v']
-            battery_text = (
-                f'{float(battery):.2f}'
-                if battery is not None
-                else 'missing'
+            summary, outcome = execute_with_emergency_retries(
+                runner,
+                args,
+                run,
+                commands[run.run_id],
+                attempts,
             )
-            print(
-                f"VIDEO MARKER: STOP {current_run_id}; odometry="
-                f"{float(summary['odom_path_at_stop_m']):.4f} m; "
-                f"duration={float(summary['elapsed_command_s']):.3f} s; "
-                f'battery={battery_text} V'
-            )
+            if outcome == 'finish':
+                break
+            if outcome == 'skip':
+                last_run = None
+                last_execution_id = None
+                index += 1
+                continue
             last_run = run
             last_execution_id = str(summary['run_id'])
             index += 1

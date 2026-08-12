@@ -11,7 +11,7 @@ anterior não é apagada: recebe o estado `repeated_by_operator`, e a nova receb
 o sufixo `_A02`, `_A03` etc. Assim, o incidente permanece auditável e é
 excluído da análise principal.
 
-Durante cada execução de A, pressione `ESPAÇO` ou `E` para enviar o freio sem
+Durante cada execução de A ou C, pressione `ESPAÇO` ou `E` para enviar o freio sem
 precisar de Enter. A tentativa parcial recebe o estado
 `emergency_stop_by_operator`, não entra na análise principal e o programa
 oferece repetir o mesmo passo depois do reposicionamento.
@@ -140,7 +140,28 @@ ros2 run modubot_serial_bridge odometry_trajectory_experiment \
   --campaign-name article_C_arc_pi
 ```
 
-Repita as três campanhas com `--control-mode raw` para obter a comparação sem
+Figura em oito contínua, cinco repetições. Cada execução completa uma volta à
+esquerda e outra à direita sem parar no cruzamento central. O sentido inicial
+pode ser trocado para `right`; `--figure-eight-cycles 2` repete o desenho duas
+vezes dentro da mesma execução para medir acúmulo de erro.
+
+```bash
+ros2 run modubot_serial_bridge odometry_trajectory_experiment \
+  --port /dev/ttyUSB0 \
+  --trajectories figure_eight \
+  --repetitions 5 \
+  --figure-eight-radius 0.35 \
+  --figure-eight-cycles 1 \
+  --figure-eight-start-direction left \
+  --linear-speed 0.15 \
+  --control-mode pi \
+  --kp 12 --ki 40 --kd 0 --kff 0 --dac-min 0 \
+  --max-duration 60 \
+  --video-file article_C_figure_eight_pi.mp4 \
+  --campaign-name article_C_figure_eight_pi
+```
+
+Repita as quatro campanhas com `--control-mode raw` para obter a comparação sem
 PI. O modo `--automatic --inter-run-wait <segundos>` existe para bancada segura,
 mas não deve ser usado quando o robô precisa ser reposicionado no chão.
 
