@@ -8,6 +8,7 @@ from modubot_serial_bridge.feedforward_calibration import (
     build_parser,
     confirm_campaign_start,
     firmware_abort_reason,
+    is_emergency_key,
     next_run_action,
     parse_control_mode_line,
 )
@@ -60,6 +61,14 @@ def test_firmware_abort_reason_recognizes_rejected_commands_and_faults():
         '# FALHA_FEEDBACK_L: DAC sem pulsos'
     ) == 'FALHA_FEEDBACK_L: DAC sem pulsos'
     assert firmware_abort_reason('# WATCHDOG: sem comando') is None
+
+
+def test_emergency_stop_accepts_space_or_e_without_enter():
+    assert is_emergency_key(' ')
+    assert is_emergency_key('e')
+    assert is_emergency_key('E')
+    assert not is_emergency_key('\n')
+    assert not is_emergency_key('s')
 
 
 def test_open_loop_is_selected_and_confirmed_before_campaign():

@@ -35,6 +35,20 @@ try:
 except ImportError:
     serial = None
 
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+
+try:
+    import select
+    import termios
+    import tty
+except ImportError:
+    select = None
+    termios = None
+    tty = None
+
 
 if serial is None:
     SERIAL_EXCEPTIONS: Tuple[type, ...] = ()
@@ -46,7 +60,7 @@ else:
 CALIBRATION_EXCEPTIONS = (RuntimeError,) + SERIAL_EXCEPTIONS
 
 
-SCRIPT_VERSION = '1.4.0'
+SCRIPT_VERSION = '1.5.0'
 DEFAULT_LEVELS = '0.02,0.03,0.04,0.05,0.075,0.10,0.20,0.30'
 
 FIRMWARE_ABORT_PREFIXES = (
@@ -256,6 +270,71 @@ def firmware_abort_reason(line: str) -> Optional[str]:
     if line.startswith(FIRMWARE_ABORT_PREFIXES):
         return line.removeprefix('#').strip()
     return None
+
+
+def is_emergency_key(key: str) -> bool:
+    """Return whether a single key requests an immediate operator stop."""
+    return key in {' ', 'e', 'E'}
+
+
+class EmergencyStopMonitor:
+    """Poll an interactive terminal without waiting for Enter."""
+
+    def __init__(self) -> None:
+        self.enabled = False
+        self._fd: Optional[int] = None
+        self._terminal_settings = None
+
+    def __enter__(self) -> 'EmergencyStopMonitor':
+        if os.name == 'nt' and msvcrt is not None:
+            self.enabled = True
+            return self
+        if (
+            select is not None
+            and termios is not None
+            and tty is not None
+            and sys.stdin.isatty()
+        ):
+            try:
+                self._fd = sys.stdin.fileno()
+                self._terminal_settings = termios.tcgetattr(self._fd)
+                tty.setcbreak(self._fd)
+                self.enabled = True
+            except (OSError, termios.error):
+                self._fd = None
+                self._terminal_settings = None
+        return self
+
+    def poll(self) -> bool:
+        """Consume pending keys and report an emergency request."""
+        if not self.enabled:
+            return False
+        if os.name == 'nt' and msvcrt is not None:
+            while msvcrt.kbhit():
+                if is_emergency_key(msvcrt.getwch()):
+                    return True
+            return False
+        if select is None:
+            return False
+        while select.select([sys.stdin], [], [], 0.0)[0]:
+            if is_emergency_key(sys.stdin.read(1)):
+                return True
+        return False
+
+    def __exit__(self, *_args: object) -> None:
+        if (
+            self._fd is not None
+            and self._terminal_settings is not None
+            and termios is not None
+        ):
+            try:
+                termios.tcsetattr(
+                    self._fd,
+                    termios.TCSADRAIN,
+                    self._terminal_settings,
+                )
+            except (OSError, termios.error):
+                pass
 
 
 def wheel_speed(
@@ -469,6 +548,7 @@ class CampaignRunner:
         steady_angular: List[float] = []
         battery_values: List[float] = []
         latest_battery: Optional[float] = None
+        emergency_stopped = False
         self.link.stop()
         self.link.clear_input()
         run_start = time.monotonic()
@@ -480,7 +560,16 @@ class CampaignRunner:
             ('post_stop', self.args.post_time),
         ]
 
-        with sample_path.open('w', newline='', encoding='utf-8') as stream:
+        with EmergencyStopMonitor() as emergency, sample_path.open(
+            'w', newline='', encoding='utf-8'
+        ) as stream:
+            if emergency.enabled:
+                print('  EMERGENCY STOP armed: press SPACE or E.')
+            else:
+                print(
+                    '  WARNING: keyboard emergency stop is unavailable; '
+                    'keep the physical emergency stop accessible.'
+                )
             writer = csv.DictWriter(stream, fieldnames=SAMPLE_FIELDS)
             writer.writeheader()
 
@@ -494,6 +583,10 @@ class CampaignRunner:
                     while True:
                         now = time.monotonic()
                         elapsed_phase = now - phase_start
+                        if emergency.poll():
+                            self.link.stop(repeats=1)
+                            emergency_stopped = True
+                            break
                         if elapsed_phase >= duration:
                             break
 
@@ -613,6 +706,8 @@ class CampaignRunner:
                                 'timeout. The robot was stopped.'
                             )
                         time.sleep(0.005)
+                    if emergency_stopped:
+                        break
             finally:
                 self.link.stop()
                 stream.flush()
@@ -635,7 +730,11 @@ class CampaignRunner:
             'run_id': current_run_id,
             'planned_run_id': run.run_id,
             'attempt': attempt,
-            'status': 'completed' if steady_left else 'no_steady_samples',
+            'status': (
+                'emergency_stop_by_operator'
+                if emergency_stopped
+                else ('completed' if steady_left else 'no_steady_samples')
+            ),
             'direction': run.direction,
             'mode': run.mode,
             'level_index': run.level_index,
@@ -726,7 +825,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument('--port', default='/dev/ttyUSB0')
     parser.add_argument('--baud', type=int, default=115200)
-    parser.add_argument('--levels', type=parse_levels, default=parse_levels(DEFAULT_LEVELS))
+    parser.add_argument(
+        '--levels', type=parse_levels, default=parse_levels(DEFAULT_LEVELS)
+    )
     parser.add_argument(
         '--direction', choices=['forward', 'reverse', 'both'], default='forward'
     )
@@ -864,6 +965,12 @@ def write_metadata(
 
 
 def print_summary(summary: Dict[str, object]) -> None:
+    if summary['status'] == 'emergency_stop_by_operator':
+        print(
+            f"\nEmergency stop recorded for {summary['run_id']}; "
+            'this attempt is invalid.'
+        )
+        return
     print(f"\nCompleted {summary['run_id']} ({summary['steady_samples']} samples)")
     battery = summary['battery_mean_v']
     if battery is not None:
@@ -918,6 +1025,33 @@ def next_run_action(
     return 'run'
 
 
+def execute_with_emergency_retries(
+    runner: CampaignRunner,
+    args: argparse.Namespace,
+    run: PlannedRun,
+    attempts: Dict[str, int],
+) -> Tuple[Dict[str, object], str]:
+    """Execute one plan item, offering a safe retry after an emergency stop."""
+    while True:
+        attempt = attempts.get(run.run_id, 0) + 1
+        attempts[run.run_id] = attempt
+        if attempt > 1:
+            print(f'Executing {run.run_id} as attempt {attempt}.')
+        summary = runner.execute(run, attempt)
+        print_summary(summary)
+        if summary['status'] != 'emergency_stop_by_operator':
+            return summary, 'completed'
+
+        response = input(
+            'Reposition the robot after the emergency stop. '
+            'ENTER=retry, s=skip this step, q=finish campaign: '
+        ).strip().lower()
+        if response == 'q':
+            return summary, 'finish'
+        if response == 's':
+            return summary, 'skip'
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -967,14 +1101,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if action == 'repeat':
                 if last_run is None or last_execution_id is None:
                     continue
-                runner.supersede(last_execution_id)
                 run = last_run
-                attempt = attempts[run.run_id] + 1
-                attempts[run.run_id] = attempt
-                print(f'Repeating {run.run_id} as attempt {attempt}.')
-                summary = runner.execute(run, attempt)
+                previous_execution_id = last_execution_id
+                print(f'Repeating {run.run_id}.')
+                summary, outcome = execute_with_emergency_retries(
+                    runner, args, run, attempts
+                )
+                if outcome == 'finish':
+                    break
+                if outcome == 'skip':
+                    continue
+                runner.supersede(previous_execution_id)
                 last_execution_id = str(summary['run_id'])
-                print_summary(summary)
                 continue
             if action == 'skip':
                 runner.record_skipped(run)
@@ -982,10 +1120,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 last_execution_id = None
                 index += 1
                 continue
-            attempt = attempts.get(run.run_id, 0) + 1
-            attempts[run.run_id] = attempt
-            summary = runner.execute(run, attempt)
-            print_summary(summary)
+            summary, outcome = execute_with_emergency_retries(
+                runner, args, run, attempts
+            )
+            if outcome == 'finish':
+                break
+            if outcome == 'skip':
+                last_run = None
+                last_execution_id = None
+                index += 1
+                continue
             last_run = run
             last_execution_id = str(summary['run_id'])
             index += 1

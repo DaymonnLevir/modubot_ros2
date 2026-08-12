@@ -11,6 +11,11 @@ anterior não é apagada: recebe o estado `repeated_by_operator`, e a nova receb
 o sufixo `_A02`, `_A03` etc. Assim, o incidente permanece auditável e é
 excluído da análise principal.
 
+Durante cada execução de A, pressione `ESPAÇO` ou `E` para enviar o freio sem
+precisar de Enter. A tentativa parcial recebe o estado
+`emergency_stop_by_operator`, não entra na análise principal e o programa
+oferece repetir o mesmo passo depois do reposicionamento.
+
 ## Preparação
 
 ```bash
