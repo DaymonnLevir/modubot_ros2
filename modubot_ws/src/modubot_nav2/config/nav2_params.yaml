@@ -225,7 +225,7 @@ global_costmap:
         combination_method: 2
         observation_sources: "scan"
         scan:
-          topic: "scan_filtered"
+          topic: "/scan_filtered"
           data_type: "LaserScan"
           marking: true
           clearing: true
@@ -267,7 +267,7 @@ local_costmap:
         combination_method: 1
         observation_sources: "scan"
         scan:
-          topic: "scan_filtered"
+          topic: "/scan_filtered"
           data_type: "LaserScan"
           marking: true
           clearing: true
