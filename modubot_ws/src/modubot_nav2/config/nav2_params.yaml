@@ -79,7 +79,7 @@ planner_server:
       max_iterations: 1000000
       max_on_approach_iterations: 1000
       max_planning_time: 2.0
-      cost_travel_multiplier: 2.0
+      cost_travel_multiplier: 4.0
       use_final_approach_orientation: false
       smooth_path: true
       smoother:
@@ -92,7 +92,7 @@ planner_server:
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 20.0
+    controller_frequency: 10.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
@@ -111,18 +111,18 @@ controller_server:
       stateful: true
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
-      time_steps: 60
-      model_dt: 0.05
-      batch_size: 2000
+      time_steps: 75
+      model_dt: 0.1
+      batch_size: 800
       vx_std: 0.20
       vy_std: 0.0
-      wz_std: 0.40
+      wz_std: 0.60
       vx_max: 0.20
       vx_min: 0.0
       vy_max: 0.0
       wz_max: 0.8
       iteration_count: 1
-      prune_distance: 1.5
+      prune_distance: 2.0
       transform_tolerance: 0.5
       temperature: 0.3
       gamma: 0.015
@@ -151,7 +151,7 @@ controller_server:
       CostCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 3.81
+        cost_weight: 6.0
         critical_cost: 300.0
         consider_footprint: true
         collision_cost: 1000000.0
@@ -169,7 +169,7 @@ controller_server:
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 14.0
+        cost_weight: 8.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.5
@@ -238,10 +238,10 @@ global_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.55
-        cost_scaling_factor: 2.5
+        inflation_radius: 0.85
+        cost_scaling_factor: 2.0
         inflate_unknown: false
-        inflate_around_unknown: false
+        inflate_around_unknown: true
 
 local_costmap:
   local_costmap:
@@ -252,8 +252,8 @@ local_costmap:
       update_frequency: 10.0
       publish_frequency: 5.0
       rolling_window: true
-      width: 3
-      height: 3
+      width: 4
+      height: 4
       resolution: 0.05
       transform_tolerance: 0.5
 
