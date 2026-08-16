@@ -7,9 +7,10 @@ lattice that collision-checks the complete ModuBot footprint at each candidate
 pose. Keep reverse expansion disabled, preserve in-place rotation, and retain
 MPPI as the local controller.
 
-The migration is intentionally separated from the current Smac 2D correction.
-This permits an A/B comparison and a one-argument rollback while the lattice
-profile is being validated.
+The corrected Smac 2D baseline was preserved in
+`config/nav2_params_smac2d.yaml`. The default `config/nav2_params.yaml` now
+contains the lattice profile, permitting an A/B comparison and one-argument
+rollback while it is validated.
 
 ## Confirmed platform constraints
 
@@ -23,17 +24,24 @@ profile is being validated.
   `/opt/ros/humble/share/nav2_smac_planner/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json`.
   It has 16 headings and 112 trajectories.
 
-## Phase 1: reproducible lattice profile
+## Phase 1: reproducible lattice profile (implemented)
 
-1. Copy the differential 5 cm / 0.5 m primitive JSON into
-   `modubot_nav2/config/lattice/` so experiments do not depend on the contents
-   of a particular binary installation.
-2. Add a separate `nav2_params_lattice.yaml`; do not replace the known Smac 2D
-   profile during initial validation.
-3. Extend the launch file to rewrite a lattice-file placeholder to the package
-   share path, in the same way it currently rewrites the behavior-tree paths.
-4. Expose a launch argument selecting `smac_2d` or `smac_lattice`, with
-   `smac_2d` retained as the rollback default until the acceptance tests pass.
+- [x] Vendored the differential 5 cm / 0.5 m primitive JSON in
+  `config/lattice/`, with source and checksum recorded beside it.
+- [x] Preserved the corrected Smac 2D parameters as
+  `config/nav2_params_smac2d.yaml`.
+- [x] Made Smac Lattice the default in `config/nav2_params.yaml`.
+- [x] Extended the real and simulated launch files to resolve the vendored
+  lattice path from the installed package share directory.
+- [x] Kept rollback available through the existing `nav2_params_file` launch
+  argument, without duplicating the launch implementation.
+
+Physical robot rollback example:
+
+```bash
+ros2 launch modubot_nav2 nav2.launch.py \
+  nav2_params_file:=/workspace/modubot_ws/install/modubot_nav2/share/modubot_nav2/config/nav2_params_smac2d.yaml
+```
 
 Initial lattice parameters:
 
@@ -116,7 +124,7 @@ not be used to compensate for an odometry or localization error.
 
 ## Promotion and rollback
 
-Promote Smac Lattice to the default only when it:
+Keep Smac Lattice as the validated default only when it:
 
 - produces no footprint-invalid paths;
 - crosses every required door;
@@ -125,5 +133,5 @@ Promote Smac Lattice to the default only when it:
   on the Jetson;
 - improves or preserves minimum clearance in the repeated trials.
 
-Until then, selecting the Smac 2D parameter profile remains the immediate
-rollback mechanism.
+Until then, selecting `nav2_params_smac2d.yaml` through `nav2_params_file`
+remains the immediate rollback mechanism.

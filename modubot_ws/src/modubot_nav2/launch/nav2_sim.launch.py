@@ -39,6 +39,12 @@ def generate_launch_description():
         'behavior_trees',
         'navigate_through_poses_realtime.xml',
     )
+    default_lattice = os.path.join(
+        nav2_share,
+        'config',
+        'lattice',
+        'modubot_diff_5cm_r0p5.json',
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_rviz = LaunchConfiguration('use_rviz')
@@ -52,6 +58,7 @@ def generate_launch_description():
             'default_nav_through_poses_bt_xml': (
                 default_nav_through_poses_bt
             ),
+            'lattice_filepath': default_lattice,
         },
         convert_types=True,
     )

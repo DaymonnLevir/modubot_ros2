@@ -9,12 +9,12 @@ for the physical odometry and braking calibrations listed below.
 
 ### Map and global planning
 
-- The global costmap tracks unknown space and Smac Planner 2D is not allowed
-  to plan through it. Unmapped cells are therefore non-traversable.
-- Smac Planner 2D uses cost-aware A* at the native 0.05 m costmap resolution.
-  A travel cost multiplier of 4.0 retains a preference for corridor centers;
-  full resolution avoids the 0.10 m quantization introduced by the previous
-  downsampling configuration.
+- The global costmap tracks unknown space and Smac Lattice is not allowed to
+  plan through it. Unmapped cells are therefore non-traversable.
+- Smac Lattice uses differential-drive motion primitives at the native 0.05 m
+  costmap resolution. A cost penalty of 4.0 retains a preference for corridor
+  centers, while SE2 collision checking evaluates the complete rectangular
+  footprint and its orientation along every candidate path.
 - The global obstacle layer uses `combination_method: 1`. Nav2 Humble 1.1.20
   implements only methods 0 and 1; method 2 falls through without merging the
   lidar obstacle layer into the master costmap. Method 1 therefore ensures
@@ -60,11 +60,10 @@ for the physical odometry and braking calibrations listed below.
   Local inflation remains at a 0.60 m radius and 4.0 scaling factor so the
   controller can still cross narrow doors. The 6 x 6 m rolling window uses the
   full configured 3 m local obstacle range instead of clipping it at 2 m.
-- Smac Planner 2D still approximates the robot as circular. Because ModuBot has
-  an asymmetric rectangular footprint, the next planner baseline must use
-  Smac Lattice with differential-drive primitives and SE2 footprint checking.
-  Until that migration is validated, the current global path is cost-aware but
-  is not a complete orientation-dependent collision model of the chassis.
+- Smac Lattice evaluates the asymmetric rectangular footprint in SE2 using a
+  vendored differential-drive primitive set. Reverse expansion is disabled,
+  while in-place rotations remain available and are penalized so they are used
+  when required rather than as a routine shortcut.
 - Lidar observations persist for 0.25 s. This retains short clusters such as
   legs for multiple costmap cycles without leaving half-second ghost obstacles.
 
@@ -82,10 +81,9 @@ for the physical odometry and braking calibrations listed below.
   states per cycle are 44% fewer than the previous 800 x 75 configuration.
 - One optimization iteration and pre-generated noise minimize runtime jitter.
   Trajectory visualization remains disabled during navigation.
-- The mandatory Smac 2D smoother favors retention of the cost-aware A* path
-  (`w_data: 0.4`, `w_smooth: 0.2`) and disables recursive refinement. This
-  reduces non-cost-aware corner cutting while preserving continuous paths for
-  MPPI.
+- Lattice path smoothing starts disabled so the first comparison measures the
+  state-lattice planner and full-footprint checks without an additional
+  geometric transformation. Enable it only after the baseline is validated.
 - The differential-drive model uses the full rectangular footprint for
   collision scoring. Cost, path and goal critics permit local obstacle
   avoidance while preserving the intent of the Smac global path.
@@ -170,4 +168,4 @@ same map, start pose, battery state and test route for comparisons.
 - Linear and angular deadbands.
 - AMCL odometry noise coefficients.
 - Collision-zone depth derived from measured latency and stopping distance.
-- Smac Lattice primitives and penalties for the full asymmetric footprint.
+- Smac Lattice primitive and penalty tuning after the A/B validation routes.
