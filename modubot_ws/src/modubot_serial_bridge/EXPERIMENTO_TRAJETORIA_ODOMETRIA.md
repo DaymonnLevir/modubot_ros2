@@ -115,6 +115,36 @@ que as rodas começam e param também permite alinhar visualmente o vídeo com o
 dados. É melhor manter um único vídeo contínuo para a campanha e não interromper
 a gravação entre repetições.
 
+## Backend ROS para simulação
+
+O backend padrão continua sendo `serial`. Para validar a geometria e a parada
+por odometria no Gazebo, use `--backend ros`. Nesse modo, o executor publica
+`geometry_msgs/Twist`, consome `nav_msgs/Odometry` e registra bateria como
+indisponível. Os campos são identificados como `simulated_velocity`; portanto,
+esses resultados não representam o PI embarcado, a zona morta dos motores ou
+as rodas caster físicas.
+
+```bash
+ros2 run modubot_serial_bridge odometry_trajectory_experiment \
+  --backend ros \
+  --cmd-vel-topic /cmd_vel_safe \
+  --odom-topic /odom \
+  --trajectories figure_eight \
+  --repetitions 1 \
+  --figure-eight-radius 0.35 \
+  --figure-eight-cycles 1 \
+  --linear-speed 0.15 \
+  --automatic \
+  --inter-run-wait 0 \
+  --campaign-name sim_figure_eight
+```
+
+Para subir o Gazebo e executar o mesmo comando automaticamente:
+
+```bash
+ros2 launch modubot_gazebo trajectory_experiment_sim.launch.py
+```
+
 ## Campanha recomendada
 
 Depois de verificar o piloto, uma campanha com dez repetições por geometria:

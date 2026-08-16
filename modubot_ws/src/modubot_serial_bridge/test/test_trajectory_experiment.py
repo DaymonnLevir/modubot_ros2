@@ -8,8 +8,10 @@ from unittest.mock import patch
 import pytest
 
 from modubot_serial_bridge.odometry_trajectory_experiment import (
+    build_parser,
     execute_with_emergency_retries,
     parse_trajectories,
+    prepare_plan,
 )
 
 from modubot_serial_bridge.trajectory_experiment_core import (
@@ -144,6 +146,26 @@ def test_figure_eight_ideal_pose_returns_to_crossing_after_each_circle():
 def test_figure_eight_name_is_accepted_by_command_line_parser():
     assert parse_trajectories('figure_eight') == ['figure_eight']
     assert 'figure_eight' in parse_trajectories('all')
+
+
+def test_ros_backend_builds_linear_and_angular_twist_segments():
+    args = build_parser().parse_args([
+        '--backend', 'ros',
+        '--trajectories', 'figure_eight',
+        '--repetitions', '1',
+        '--figure-eight-radius', '0.35',
+        '--linear-speed', '0.15',
+    ])
+    plan, commands = prepare_plan(args)
+    first, second = commands[plan[0].run_id]
+
+    assert first == pytest.approx((0.15, 0.15 / 0.35))
+    assert second == pytest.approx((0.15, -0.15 / 0.35))
+
+
+def test_serial_backend_remains_the_default():
+    args = build_parser().parse_args([])
+    assert args.backend == 'serial'
 
 
 def test_trajectory_emergency_stop_preserves_attempt_and_retries():

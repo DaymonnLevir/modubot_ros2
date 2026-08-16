@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive finite trajectories and stop from the ESP32 wheel odometry."""
+"""Drive finite trajectories and stop from serial or ROS odometry."""
 
 from __future__ import annotations
 
@@ -10,10 +10,11 @@ import math
 import os
 import sys
 import time
-from dataclasses import asdict
+from collections import deque
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple
 
 from .feedforward_calibration import (
     CALIBRATION_EXCEPTIONS,
@@ -43,10 +44,22 @@ from .trajectory_experiment_core import (
 )
 
 
-SCRIPT_VERSION = '1.2.0'
+SCRIPT_VERSION = '1.3.0'
 
 CommandPair = Tuple[float, float]
 RunCommands = Dict[str, List[CommandPair]]
+
+
+@dataclass(frozen=True)
+class RosOdomPoint:
+    """Minimal odometry sample used by the ROS simulation backend."""
+
+    stamp_s: float
+    received_monotonic_s: float
+    x_m: float
+    y_m: float
+    yaw_rad: float
+
 
 SAMPLE_FIELDS = [
     'timestamp_utc',
@@ -74,6 +87,8 @@ SAMPLE_FIELDS = [
     'command_type',
     'command_left',
     'command_right',
+    'command_linear_mps',
+    'command_angular_rps',
     'dac_left',
     'dac_right',
     'delta_ticks_left',
@@ -105,6 +120,7 @@ SUMMARY_FIELDS = [
     'trajectory',
     'repetition',
     'control_mode',
+    'backend',
     'target_path_length_m',
     'target_yaw_rad',
     'target_curvature_per_m',
@@ -119,6 +135,8 @@ SUMMARY_FIELDS = [
     'command_type',
     'command_left',
     'command_right',
+    'command_linear_mps',
+    'command_angular_rps',
     'command_start_utc',
     'command_stop_utc',
     'elapsed_command_s',
@@ -196,8 +214,19 @@ def build_parser() -> argparse.ArgumentParser:
             'paths and stop from integrated wheel odometry.'
         )
     )
+    parser.add_argument(
+        '--backend',
+        choices=['serial', 'ros'],
+        default='serial',
+        help=(
+            'serial controls the ESP32; ros publishes Twist and consumes '
+            'nav_msgs/Odometry for simulation.'
+        ),
+    )
     parser.add_argument('--port', default='/dev/ttyUSB0')
     parser.add_argument('--baud', type=int, default=115200)
+    parser.add_argument('--cmd-vel-topic', default='/cmd_vel_safe')
+    parser.add_argument('--odom-topic', default='/odom')
     parser.add_argument(
         '--trajectories', type=parse_trajectories, default=['straight']
     )
@@ -219,6 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
         '--control-mode',
         choices=['raw', 'feedforward', 'pi'],
         default='pi',
+        help='Physical ESP32 mode; ignored when --backend ros is selected.',
     )
     parser.add_argument('--feedforward-map', type=Path)
     parser.add_argument('--v-wheel-max', type=float, default=0.6)
@@ -267,7 +297,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--dry-run',
         action='store_true',
-        help='Validate and print the plan without opening the serial port.',
+        help='Validate and print the plan without opening the selected backend.',
     )
     return parser
 
@@ -308,7 +338,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError('countdown cannot be negative.')
     if args.max_normalized_command > 1.0:
         raise ValueError('max_normalized_command cannot exceed 1.0.')
-    if args.control_mode == 'feedforward' and args.feedforward_map is None:
+    if (
+        args.backend == 'serial'
+        and args.control_mode == 'feedforward'
+        and args.feedforward_map is None
+    ):
         raise ValueError('feedforward mode requires --feedforward-map.')
     if args.feedforward_map is not None and not args.feedforward_map.is_file():
         raise ValueError(f'Feedforward map not found: {args.feedforward_map}')
@@ -346,7 +380,12 @@ def prepare_plan(
     for run in plan:
         pairs: List[CommandPair] = []
         for left_speed, right_speed in wheel_speed_segments(run):
-            if args.control_mode == 'pi':
+            if args.backend == 'ros':
+                pair = (
+                    (left_speed + right_speed) / 2.0,
+                    (right_speed - left_speed) / args.wheel_separation,
+                )
+            elif args.control_mode == 'pi':
                 pair = (
                     left_speed / args.wheel_radius_left,
                     right_speed / args.wheel_radius_right,
@@ -366,7 +405,8 @@ def prepare_plan(
                     calibration,
                 )
             if (
-                args.control_mode != 'pi'
+                args.backend == 'serial'
+                and args.control_mode != 'pi'
                 and max(abs(pair[0]), abs(pair[1]))
                 > args.max_normalized_command
             ):
@@ -388,7 +428,14 @@ def print_plan(
     print('\nPlanned odometry-stopped runs:')
     for index, run in enumerate(plan, start=1):
         left, right = commands[run.run_id][0]
-        command_label = 'omega' if args.control_mode == 'pi' else 'u'
+        if args.backend == 'ros':
+            command_text = f'v={left:+.4f} m/s, w={right:+.4f} rad/s'
+        else:
+            command_label = 'omega' if args.control_mode == 'pi' else 'u'
+            command_text = (
+                f'{command_label}L={left:+.4f}, '
+                f'{command_label}R={right:+.4f}'
+            )
         print(
             f'  {index:02d}/{len(plan):02d} {run.run_id}: '
             f's={run.target_path_length_m:.3f} m, '
@@ -396,21 +443,44 @@ def print_plan(
             f'k={run.curvature_per_m:+.3f} 1/m, '
             f'vL={run.target_left_speed_mps:.3f} m/s, '
             f'vR={run.target_right_speed_mps:.3f} m/s, '
-            f'{command_label}L={left:+.4f}, {command_label}R={right:+.4f}'
+            f'{command_text}'
         )
         if run.trajectory == 'figure_eight':
             second_left, second_right = commands[run.run_id][1]
+            if args.backend == 'ros':
+                segment_text = (
+                    f'segment-2 v={second_left:+.4f} m/s, '
+                    f'w={second_right:+.4f} rad/s'
+                )
+            else:
+                segment_text = (
+                    f'segment-2 {command_label}L={second_left:+.4f}, '
+                    f'{command_label}R={second_right:+.4f}'
+                )
             print(
                 f'      figure-eight: radius={run.figure_eight_radius_m:.3f} m, '
                 f'cycles={run.figure_eight_cycles}, '
-                f'start={run.figure_eight_start_direction}, '
-                f'segment-2 {command_label}L={second_left:+.4f}, '
-                f'{command_label}R={second_right:+.4f}'
+                f'start={run.figure_eight_start_direction}, {segment_text}'
             )
     print(
         f'  order={args.order}, seed={args.seed}, '
-        f'control={args.control_mode}, video={args.video_file}'
+        f'backend={args.backend}, control={effective_control_mode(args)}, '
+        f'video={args.video_file}'
     )
+
+
+def effective_control_mode(args: argparse.Namespace) -> str:
+    """Return the control label that accurately describes the backend."""
+    return 'simulated_velocity' if args.backend == 'ros' else args.control_mode
+
+
+def command_type(args: argparse.Namespace) -> str:
+    """Return the command semantics stored in metadata and CSV files."""
+    if args.backend == 'ros':
+        return 'cmd_vel_linear_angular'
+    if args.control_mode == 'pi':
+        return 'wheel_angular_speed_rps'
+    return 'normalized_dac'
 
 
 def create_campaign_dir(args: argparse.Namespace) -> Path:
@@ -427,21 +497,32 @@ def write_metadata(
     plan: Sequence[TrajectoryRun],
     commands: RunCommands,
 ) -> None:
-    metadata = {
-        'script_version': SCRIPT_VERSION,
-        'created_at_utc': datetime.now(timezone.utc).isoformat(),
-        'method': (
+    if args.backend == 'ros':
+        method = (
+            'The process publishes geometry_msgs/Twist and stops each run '
+            'from nav_msgs/Odometry. This simulation backend validates '
+            'trajectory geometry and data collection; it does not emulate '
+            'the ESP32 PI loop, motor dead zone, battery, or physical casters.'
+        )
+        battery_protocol = 'not_available_in_simulation'
+    else:
+        method = (
             'The ESP32 serial link is owned exclusively by this process. '
             'Integrated wheel increments stop each run at the requested '
             'odometric center-path length. AprilTag video is recorded '
             'independently and measured offline.'
-        ),
+        )
+        battery_protocol = 'BAT:<voltage_v>'
+    metadata = {
+        'script_version': SCRIPT_VERSION,
+        'created_at_utc': datetime.now(timezone.utc).isoformat(),
+        'method': method,
         'odometry_definition': (
             'center increment=(left_distance+right_distance)/2; stop progress '
             'is accumulated center distance for straight/arcs and accumulated '
             'signed yaw in the commanded direction for in-place rotations.'
         ),
-        'battery_protocol': 'BAT:<voltage_v>',
+        'battery_protocol': battery_protocol,
         'arguments': {
             key: str(value) if isinstance(value, Path) else value
             for key, value in vars(args).items()
@@ -449,15 +530,33 @@ def write_metadata(
         'plan': [
             {
                 **asdict(run),
-                'command_type': (
-                    'wheel_angular_speed_rps'
-                    if args.control_mode == 'pi'
-                    else 'normalized_dac'
+                'command_type': command_type(args),
+                'command_left': (
+                    None
+                    if args.backend == 'ros'
+                    else commands[run.run_id][0][0]
                 ),
-                'command_left': commands[run.run_id][0][0],
-                'command_right': commands[run.run_id][0][1],
+                'command_right': (
+                    None
+                    if args.backend == 'ros'
+                    else commands[run.run_id][0][1]
+                ),
+                'command_linear_mps': (
+                    commands[run.run_id][0][0]
+                    if args.backend == 'ros'
+                    else None
+                ),
+                'command_angular_rps': (
+                    commands[run.run_id][0][1]
+                    if args.backend == 'ros'
+                    else None
+                ),
                 'command_segments': [
-                    {'left': pair[0], 'right': pair[1]}
+                    (
+                        {'linear_x_mps': pair[0], 'angular_z_rps': pair[1]}
+                        if args.backend == 'ros'
+                        else {'left': pair[0], 'right': pair[1]}
+                    )
                     for pair in commands[run.run_id]
                 ],
             }
@@ -597,6 +696,8 @@ class ExperimentRunner:
             ),
             'command_left': command[0],
             'command_right': command[1],
+            'command_linear_mps': None,
+            'command_angular_rps': None,
             'dac_left': None if is_pi else norm_to_dac(command[0]),
             'dac_right': None if is_pi else norm_to_dac(command[1]),
             'delta_ticks_left': delta_left,
@@ -829,6 +930,7 @@ class ExperimentRunner:
             'trajectory': run.trajectory,
             'repetition': run.repetition,
             'control_mode': self.args.control_mode,
+            'backend': 'serial',
             'target_path_length_m': run.target_path_length_m,
             'target_yaw_rad': run.target_yaw_rad,
             'target_curvature_per_m': run.curvature_per_m,
@@ -853,6 +955,8 @@ class ExperimentRunner:
             ),
             'command_left': commands[0][0],
             'command_right': commands[0][1],
+            'command_linear_mps': None,
+            'command_angular_rps': None,
             'command_start_utc': command_start_utc,
             'command_stop_utc': command_stop_utc,
             'elapsed_command_s': command_elapsed,
@@ -894,6 +998,7 @@ class ExperimentRunner:
                 'trajectory': run.trajectory,
                 'repetition': run.repetition,
                 'control_mode': self.args.control_mode,
+                'backend': 'serial',
                 'target_path_length_m': run.target_path_length_m,
                 'target_yaw_rad': run.target_yaw_rad,
                 'target_curvature_per_m': run.curvature_per_m,
@@ -914,6 +1019,463 @@ class ExperimentRunner:
                 ),
                 'command_left': commands[0][0],
                 'command_right': commands[0][1],
+                'command_linear_mps': None,
+                'command_angular_rps': None,
+            }
+        )
+        self.summary_table.append(row)
+
+
+class RosExperimentRunner(ExperimentRunner):
+    """Execute trajectories through Twist commands and ROS odometry."""
+
+    def __init__(self, args: argparse.Namespace, output_dir: Path) -> None:
+        self.args = args
+        self.output_dir = output_dir
+        self.summary_table = SummaryTable(
+            output_dir / 'summary.csv', SUMMARY_FIELDS
+        )
+        try:
+            import rclpy
+            from geometry_msgs.msg import Twist
+            from nav_msgs.msg import Odometry
+        except ImportError as exc:
+            raise RuntimeError(
+                'The ROS backend requires rclpy, geometry_msgs, and nav_msgs.'
+            ) from exc
+
+        self.rclpy = rclpy
+        self.twist_type = Twist
+        self.odom_queue: Deque[RosOdomPoint] = deque(maxlen=10000)
+        self.latest_odom: Optional[RosOdomPoint] = None
+        self._owns_rclpy_context = not rclpy.ok()
+        if self._owns_rclpy_context:
+            rclpy.init(args=None)
+        self.node = rclpy.create_node('modubot_trajectory_experiment')
+        self.publisher = self.node.create_publisher(
+            Twist, args.cmd_vel_topic, 10
+        )
+        self.subscription = self.node.create_subscription(
+            Odometry, args.odom_topic, self._on_odom, 50
+        )
+
+        print(
+            f'Waiting for ROS odometry on {args.odom_topic} and a command '
+            f'subscriber on {args.cmd_vel_topic}...'
+        )
+        deadline = time.monotonic() + args.preflight_timeout
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self.node, timeout_sec=0.1)
+            if (
+                self.latest_odom is not None
+                and self.publisher.get_subscription_count() > 0
+            ):
+                break
+        else:
+            odom_status = (
+                'received' if self.latest_odom is not None else 'missing'
+            )
+            subscriber_count = self.publisher.get_subscription_count()
+            self.close()
+            raise RuntimeError(
+                'ROS backend preflight timed out: '
+                f'odometry={odom_status}, cmd_vel subscribers='
+                f'{subscriber_count}. Start Gazebo and verify the topics.'
+            )
+        print(
+            f'ROS backend ready: {args.odom_topic} -> experiment -> '
+            f'{args.cmd_vel_topic}. Battery and embedded PI are not simulated.'
+        )
+        self.stop()
+
+    @staticmethod
+    def _yaw_from_quaternion(quaternion: Any) -> float:
+        siny_cosp = 2.0 * (
+            quaternion.w * quaternion.z
+            + quaternion.x * quaternion.y
+        )
+        cosy_cosp = 1.0 - 2.0 * (
+            quaternion.y * quaternion.y
+            + quaternion.z * quaternion.z
+        )
+        return math.atan2(siny_cosp, cosy_cosp)
+
+    @staticmethod
+    def _angle_delta(current: float, previous: float) -> float:
+        return math.atan2(
+            math.sin(current - previous),
+            math.cos(current - previous),
+        )
+
+    def _on_odom(self, message: Any) -> None:
+        stamp = message.header.stamp
+        point = RosOdomPoint(
+            stamp_s=float(stamp.sec) + float(stamp.nanosec) * 1.0e-9,
+            received_monotonic_s=time.monotonic(),
+            x_m=float(message.pose.pose.position.x),
+            y_m=float(message.pose.pose.position.y),
+            yaw_rad=self._yaw_from_quaternion(
+                message.pose.pose.orientation
+            ),
+        )
+        self.latest_odom = point
+        self.odom_queue.append(point)
+
+    def publish(self, command: CommandPair) -> None:
+        message = self.twist_type()
+        message.linear.x = float(command[0])
+        message.angular.z = float(command[1])
+        self.publisher.publish(message)
+
+    def stop(self, repeats: int = 3) -> None:
+        for _ in range(repeats):
+            self.publish((0.0, 0.0))
+            self.rclpy.spin_once(self.node, timeout_sec=0.01)
+
+    def close(self) -> None:
+        node = getattr(self, 'node', None)
+        if node is None:
+            return
+        try:
+            self.stop(repeats=5)
+        finally:
+            node.destroy_node()
+            self.node = None
+            if self._owns_rclpy_context and self.rclpy.ok():
+                self.rclpy.shutdown()
+
+    def _sample_from_odom(
+        self,
+        run: TrajectoryRun,
+        current_run_id: str,
+        attempt: int,
+        phase: str,
+        elapsed_run_s: float,
+        elapsed_phase_s: float,
+        command: CommandPair,
+        trajectory_segment: int,
+        previous: RosOdomPoint,
+        current: RosOdomPoint,
+        state: OdometryState,
+    ) -> Dict[str, object]:
+        dt_s = current.stamp_s - previous.stamp_s
+        if dt_s <= 0.0:
+            raise ValueError('ROS odometry timestamp did not advance.')
+        delta_yaw = self._angle_delta(current.yaw_rad, previous.yaw_rad)
+        midpoint_yaw = previous.yaw_rad + delta_yaw / 2.0
+        delta_x = current.x_m - previous.x_m
+        delta_y = current.y_m - previous.y_m
+        center_distance = (
+            delta_x * math.cos(midpoint_yaw)
+            + delta_y * math.sin(midpoint_yaw)
+        )
+        left_distance = (
+            center_distance
+            - delta_yaw * self.args.wheel_separation / 2.0
+        )
+        right_distance = (
+            center_distance
+            + delta_yaw * self.args.wheel_separation / 2.0
+        )
+        synthetic_ticks_left = (
+            left_distance
+            * self.args.ticks_left
+            / (2.0 * math.pi * self.args.wheel_radius_left)
+        )
+        synthetic_ticks_right = (
+            right_distance
+            * self.args.ticks_right
+            / (2.0 * math.pi * self.args.wheel_radius_right)
+        )
+        row = super()._sample_row(
+            run,
+            current_run_id,
+            attempt,
+            phase,
+            elapsed_run_s,
+            elapsed_phase_s,
+            command,
+            trajectory_segment,
+            (
+                synthetic_ticks_left,
+                synthetic_ticks_right,
+                dt_s * 1000.0,
+            ),
+            state,
+            None,
+        )
+        row.update(
+            {
+                'normalized_left': None,
+                'normalized_right': None,
+                'command_type': 'cmd_vel_linear_angular',
+                'command_left': None,
+                'command_right': None,
+                'command_linear_mps': command[0],
+                'command_angular_rps': command[1],
+                'dac_left': None,
+                'dac_right': None,
+                'delta_ticks_left': None,
+                'delta_ticks_right': None,
+            }
+        )
+        return row
+
+    def execute(
+        self,
+        run: TrajectoryRun,
+        commands: Sequence[CommandPair],
+        attempt: int = 1,
+    ) -> Dict[str, object]:
+        current_run_id = execution_run_id(run.run_id, attempt)
+        sample_path = self.output_dir / 'samples' / f'{current_run_id}.csv'
+        self.stop()
+        self.odom_queue.clear()
+        state = OdometryState()
+        run_start = time.monotonic()
+        previous_odom = self.latest_odom
+        last_odom = (
+            previous_odom.received_monotonic_s
+            if previous_odom is not None
+            else None
+        )
+        stop_progress = 0.0
+        stop_angle = 0.0
+        command_elapsed = 0.0
+        command_start_utc: Optional[str] = None
+        command_stop_utc: Optional[str] = None
+        emergency_stopped = False
+        active_command = commands[0]
+        active_segment = 0
+
+        with EmergencyStopMonitor() as emergency, sample_path.open(
+            'w', newline='', encoding='utf-8'
+        ) as stream:
+            if emergency.enabled:
+                print('SIMULATION STOP armed: press SPACE or E.')
+            writer = csv.DictWriter(stream, fieldnames=SAMPLE_FIELDS)
+            writer.writeheader()
+            try:
+                for phase in ['pre_stop', 'command', 'post_stop']:
+                    phase_start = time.monotonic()
+                    next_send = phase_start
+                    reached_target = False
+                    if phase == 'command':
+                        state = OdometryState()
+                        active_segment = 0
+                        self.odom_queue.clear()
+                        previous_odom = self.latest_odom
+                        command_start_utc = datetime.now(
+                            timezone.utc
+                        ).isoformat()
+                    else:
+                        self.stop()
+
+                    while True:
+                        now = time.monotonic()
+                        elapsed_phase = now - phase_start
+                        if emergency.poll():
+                            self.stop(repeats=1)
+                            emergency_stopped = True
+                            stop_progress = state.path_length_m
+                            stop_angle = state.angular_displacement_rad
+                            command_elapsed = elapsed_phase
+                            command_stop_utc = datetime.now(
+                                timezone.utc
+                            ).isoformat()
+                            break
+                        if (
+                            phase == 'pre_stop'
+                            and elapsed_phase >= self.args.pre_time
+                        ):
+                            break
+                        if (
+                            phase == 'post_stop'
+                            and elapsed_phase >= self.args.post_time
+                        ):
+                            break
+                        if phase == 'command':
+                            command_elapsed = elapsed_phase
+                            if elapsed_phase >= self.args.max_duration:
+                                raise RuntimeError(
+                                    f'{run.run_id} exceeded --max-duration '
+                                    'before reaching the ROS odometry target.'
+                                )
+
+                        if now >= next_send:
+                            if phase == 'command':
+                                active_segment = trajectory_segment_index(
+                                    run, state.path_length_m
+                                )
+                                command_index = (
+                                    active_segment % 2
+                                    if run.trajectory == 'figure_eight'
+                                    else 0
+                                )
+                                active_command = commands[command_index]
+                                self.publish(active_command)
+                            else:
+                                self.publish((0.0, 0.0))
+                            next_send = now + 1.0 / self.args.send_rate
+
+                        self.rclpy.spin_once(self.node, timeout_sec=0.005)
+                        while self.odom_queue:
+                            current_odom = self.odom_queue.popleft()
+                            last_odom = current_odom.received_monotonic_s
+                            if previous_odom is None:
+                                previous_odom = current_odom
+                                continue
+                            if current_odom.stamp_s <= previous_odom.stamp_s:
+                                previous_odom = current_odom
+                                continue
+                            row_command = (
+                                active_command
+                                if phase == 'command'
+                                else (0.0, 0.0)
+                            )
+                            row = self._sample_from_odom(
+                                run,
+                                current_run_id,
+                                attempt,
+                                phase,
+                                now - run_start,
+                                elapsed_phase,
+                                row_command,
+                                active_segment,
+                                previous_odom,
+                                current_odom,
+                                state,
+                            )
+                            previous_odom = current_odom
+                            writer.writerow(
+                                {
+                                    key: csv_value(value)
+                                    for key, value in row.items()
+                                }
+                            )
+                            progress = (
+                                (
+                                    1.0
+                                    if run.target_yaw_rad >= 0.0
+                                    else -1.0
+                                ) * state.angular_displacement_rad
+                                if run.trajectory.startswith('rotation_')
+                                else state.path_length_m
+                            )
+                            target_progress = (
+                                abs(run.target_yaw_rad)
+                                if run.trajectory.startswith('rotation_')
+                                else run.target_path_length_m
+                            )
+                            if phase == 'command' and progress >= target_progress:
+                                stop_progress = state.path_length_m
+                                stop_angle = state.angular_displacement_rad
+                                command_elapsed = elapsed_phase
+                                command_stop_utc = datetime.now(
+                                    timezone.utc
+                                ).isoformat()
+                                self.stop()
+                                reached_target = True
+                                break
+
+                        if reached_target:
+                            break
+                        if (
+                            phase == 'command'
+                            and elapsed_phase > self.args.odom_timeout
+                            and (
+                                last_odom is None
+                                or now - last_odom > self.args.odom_timeout
+                            )
+                        ):
+                            raise RuntimeError(
+                                'ROS odometry became stale during motion; '
+                                'the simulated robot was stopped.'
+                            )
+                    if emergency_stopped:
+                        break
+            finally:
+                self.stop()
+                stream.flush()
+
+        summary: Dict[str, object] = {
+            'run_id': current_run_id,
+            'planned_run_id': run.run_id,
+            'attempt': attempt,
+            'status': (
+                'emergency_stop_by_operator'
+                if emergency_stopped
+                else 'completed'
+            ),
+            'trajectory': run.trajectory,
+            'repetition': run.repetition,
+            'control_mode': 'simulated_velocity',
+            'backend': 'ros',
+            'target_path_length_m': run.target_path_length_m,
+            'target_yaw_rad': run.target_yaw_rad,
+            'target_curvature_per_m': run.curvature_per_m,
+            'target_linear_speed_mps': run.target_linear_speed_mps,
+            'target_left_speed_mps': run.target_left_speed_mps,
+            'target_right_speed_mps': run.target_right_speed_mps,
+            'figure_eight_radius_m': run.figure_eight_radius_m,
+            'figure_eight_cycles': run.figure_eight_cycles,
+            'figure_eight_start_direction': run.figure_eight_start_direction,
+            'normalized_left': None,
+            'normalized_right': None,
+            'command_type': 'cmd_vel_linear_angular',
+            'command_left': None,
+            'command_right': None,
+            'command_linear_mps': commands[0][0],
+            'command_angular_rps': commands[0][1],
+            'command_start_utc': command_start_utc,
+            'command_stop_utc': command_stop_utc,
+            'elapsed_command_s': command_elapsed,
+            'odom_path_at_stop_m': stop_progress,
+            'odom_stop_overshoot_m': stop_progress - run.target_path_length_m,
+            'odom_angle_at_stop_rad': stop_angle,
+            'odom_angle_overshoot_rad': (
+                abs(stop_angle) - abs(run.target_yaw_rad)
+                if run.trajectory.startswith('rotation_')
+                else None
+            ),
+            'odom_final_path_m': state.path_length_m,
+            'odom_final_x_m': state.x_m,
+            'odom_final_y_m': state.y_m,
+            'odom_final_yaw_rad': state.yaw_rad,
+            **battery_statistics([]),
+            'sample_file': str(sample_path.relative_to(self.output_dir)),
+        }
+        self.summary_table.append(summary)
+        return summary
+
+    def record_skipped(
+        self, run: TrajectoryRun, commands: Sequence[CommandPair]
+    ) -> None:
+        row = {field: None for field in SUMMARY_FIELDS}
+        row.update(
+            {
+                'run_id': run.run_id,
+                'planned_run_id': run.run_id,
+                'attempt': 0,
+                'status': 'skipped_by_operator',
+                'trajectory': run.trajectory,
+                'repetition': run.repetition,
+                'control_mode': 'simulated_velocity',
+                'backend': 'ros',
+                'target_path_length_m': run.target_path_length_m,
+                'target_yaw_rad': run.target_yaw_rad,
+                'target_curvature_per_m': run.curvature_per_m,
+                'target_linear_speed_mps': run.target_linear_speed_mps,
+                'target_left_speed_mps': run.target_left_speed_mps,
+                'target_right_speed_mps': run.target_right_speed_mps,
+                'figure_eight_radius_m': run.figure_eight_radius_m,
+                'figure_eight_cycles': run.figure_eight_cycles,
+                'figure_eight_start_direction': (
+                    run.figure_eight_start_direction
+                ),
+                'command_type': 'cmd_vel_linear_angular',
+                'command_linear_mps': commands[0][0],
+                'command_angular_rps': commands[0][1],
             }
         )
         self.summary_table.append(row)
@@ -981,14 +1543,17 @@ def print_run_result(summary: Dict[str, object]) -> None:
         )
         return
     battery = summary['battery_mean_v']
-    battery_text = (
-        f'{float(battery):.2f}' if battery is not None else 'missing'
-    )
+    if summary.get('backend') == 'ros':
+        battery_text = 'not simulated'
+    else:
+        battery_text = (
+            f'{float(battery):.2f} V' if battery is not None else 'missing'
+        )
     print(
         f'VIDEO MARKER: STOP {run_id}; odometry='
         f"{float(summary['odom_path_at_stop_m']):.4f} m; "
         f"duration={float(summary['elapsed_command_s']):.3f} s; "
-        f'battery={battery_text} V'
+        f'battery={battery_text}'
     )
 
 
@@ -1026,6 +1591,8 @@ def execute_with_emergency_retries(
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.backend == 'ros':
+        args.control_mode = 'simulated_velocity'
     try:
         validate_args(args)
         plan, commands = prepare_plan(args)
@@ -1035,11 +1602,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.dry_run:
         return 0
 
-    print(
-        '\nSAFETY: this program directly owns the ESP32 port. Stop '
-        'cmdvel_to_serial and serial_odom_node, clear the arena, and keep a '
-        'physical emergency stop accessible. The phone video is independent.'
-    )
+    if args.backend == 'ros':
+        print(
+            '\nSIMULATION: commands will be published as Twist on '
+            f'{args.cmd_vel_topic} and stopped from {args.odom_topic}. '
+            'This does not evaluate the embedded PI controller or battery.'
+        )
+    else:
+        print(
+            '\nSAFETY: this program directly owns the ESP32 port. Stop '
+            'cmdvel_to_serial and serial_odom_node, clear the arena, and keep '
+            'a physical emergency stop accessible. The phone video is '
+            'independent.'
+        )
     if not confirm_start(args.automatic):
         print('Campaign cancelled.')
         return 1
@@ -1049,7 +1624,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     runner: Optional[ExperimentRunner] = None
     return_code = 0
     try:
-        runner = ExperimentRunner(args, output_dir)
+        runner = (
+            RosExperimentRunner(args, output_dir)
+            if args.backend == 'ros'
+            else ExperimentRunner(args, output_dir)
+        )
         index = 0
         attempts: Dict[str, int] = {}
         last_run: Optional[TrajectoryRun] = None

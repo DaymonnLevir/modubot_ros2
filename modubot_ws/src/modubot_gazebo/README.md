@@ -64,3 +64,36 @@ The simulated differential drive listens to `/cmd_vel_safe`. This preserves
 the same command chain used on the real robot:
 
 `Nav2 /cmd_vel -> Collision Monitor /cmd_vel_safe -> simulated or real base`.
+
+## Odometry-stopped trajectory experiment
+
+The simulation backend validates the trajectory geometry, ROS command path,
+odometry-based stopping, and CSV generation. It does not emulate the embedded
+PI controller, battery, motor dead zone, or physical caster behavior.
+
+Run one continuous figure eight with a 0.35 m radius:
+
+```bash
+ros2 launch modubot_gazebo trajectory_experiment_sim.launch.py
+```
+
+Parameters can be changed from the command line:
+
+```bash
+ros2 launch modubot_gazebo trajectory_experiment_sim.launch.py \
+  figure_eight_radius:=0.40 figure_eight_cycles:=2 \
+  linear_speed:=0.15 use_gazebo_gui:=true
+```
+
+The launch starts Gazebo, waits for `/odom` and the `/cmd_vel_safe` subscriber,
+runs automatically, stores results in `~/modubot_trajectory_data`, and shuts
+Gazebo down when the experiment finishes. The same runner can also target an
+already running simulator:
+
+```bash
+ros2 run modubot_serial_bridge odometry_trajectory_experiment \
+  --backend ros --cmd-vel-topic /cmd_vel_safe --odom-topic /odom \
+  --trajectories figure_eight --repetitions 1 \
+  --figure-eight-radius 0.35 --figure-eight-cycles 1 \
+  --linear-speed 0.15 --automatic --inter-run-wait 0
+```
