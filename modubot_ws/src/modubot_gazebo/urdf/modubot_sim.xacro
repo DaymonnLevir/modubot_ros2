@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <robot name="modubot_model" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="cmd_vel_topic" default="/cmd_vel_safe"/>
   <xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.xacro"/>
 
   <gazebo reference="base_link">
@@ -72,7 +73,7 @@
   <gazebo>
     <plugin name="modubot_diff_drive" filename="libgazebo_ros_diff_drive.so">
       <ros>
-        <remapping>cmd_vel:=cmd_vel_safe</remapping>
+        <remapping>cmd_vel:=$(arg cmd_vel_topic)</remapping>
       </ros>
       <update_rate>50</update_rate>
       <left_joint>left_wheel_joint</left_joint>

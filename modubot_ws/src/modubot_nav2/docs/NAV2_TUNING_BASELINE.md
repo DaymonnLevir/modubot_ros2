@@ -83,6 +83,9 @@ for the physical odometry and braking calibrations listed below.
 
 - The monitor is an independent final safety layer, not the normal obstacle
   avoidance controller.
+- The real and simulated Nav2 launches expose `use_collision_monitor` (default
+  `true`). Setting it to `false` bypasses the monitor and routes `/cmd_vel`
+  directly to the physical or simulated base for controlled comparisons.
 - The only monitor polygon is a final emergency-stop strip in front of the
   robot. In the `base_link` convention, `+x` points longitudinally toward the
   narrow front face and `y` spans the robot width. The strip covers

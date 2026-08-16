@@ -11,7 +11,7 @@ from launch.actions import (
     TimerAction,
     UnsetEnvironmentVariable,
 )
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -42,6 +42,7 @@ def generate_launch_description():
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_rviz = LaunchConfiguration('use_rviz')
+    use_collision_monitor = LaunchConfiguration('use_collision_monitor')
 
     configured_nav2_params = RewrittenYaml(
         source_file=LaunchConfiguration('nav2_params_file'),
@@ -59,7 +60,7 @@ def generate_launch_description():
         allow_substs=True,
     )
 
-    gazebo = IncludeLaunchDescription(
+    gazebo_safe = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(gazebo_share, 'launch', 'gazebo.launch.py')
         ),
@@ -72,7 +73,26 @@ def generate_launch_description():
             'y': LaunchConfiguration('y'),
             'z': LaunchConfiguration('z'),
             'yaw': LaunchConfiguration('yaw'),
+            'cmd_vel_topic': '/cmd_vel_safe',
         }.items(),
+        condition=IfCondition(use_collision_monitor),
+    )
+    gazebo_direct = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(gazebo_share, 'launch', 'gazebo.launch.py')
+        ),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'use_gazebo_gui': LaunchConfiguration('use_gazebo_gui'),
+            'paused': LaunchConfiguration('paused'),
+            'world': LaunchConfiguration('world'),
+            'x': LaunchConfiguration('x'),
+            'y': LaunchConfiguration('y'),
+            'z': LaunchConfiguration('z'),
+            'yaw': LaunchConfiguration('yaw'),
+            'cmd_vel_topic': '/cmd_vel',
+        }.items(),
+        condition=UnlessCondition(use_collision_monitor),
     )
 
     scan_filter = Node(
@@ -95,6 +115,7 @@ def generate_launch_description():
         name='collision_monitor',
         parameters=[configured_parameter_file],
         output='screen',
+        condition=IfCondition(use_collision_monitor),
     )
     collision_monitor_lifecycle = Node(
         package='nav2_lifecycle_manager',
@@ -106,6 +127,7 @@ def generate_launch_description():
             'node_names': ['collision_monitor'],
         }],
         output='screen',
+        condition=IfCondition(use_collision_monitor),
     )
 
     nav2 = IncludeLaunchDescription(
@@ -147,6 +169,8 @@ def generate_launch_description():
         SetEnvironmentVariable('ROS_LOCALHOST_ONLY', '1'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('use_rviz', default_value='true'),
+        DeclareLaunchArgument(
+            'use_collision_monitor', default_value='true'),
         DeclareLaunchArgument('use_gazebo_gui', default_value='true'),
         DeclareLaunchArgument('paused', default_value='false'),
         DeclareLaunchArgument(
@@ -161,7 +185,8 @@ def generate_launch_description():
         DeclareLaunchArgument('y', default_value='0.0'),
         DeclareLaunchArgument('z', default_value='0.10'),
         DeclareLaunchArgument('yaw', default_value='0.0'),
-        gazebo,
+        gazebo_safe,
+        gazebo_direct,
         scan_filter,
         TimerAction(
             period=20.0,

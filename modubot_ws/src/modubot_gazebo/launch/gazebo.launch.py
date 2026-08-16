@@ -1,13 +1,13 @@
 import os
 
-import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -19,12 +19,15 @@ def generate_launch_description():
         gazebo_share, 'worlds', 'DC_FirstFloor.world')
     xacro_file = os.path.join(
         gazebo_share, 'urdf', 'modubot_sim.xacro')
-    robot_description = xacro.process_file(
-        xacro_file,
-        mappings={
-            'mesh_prefix': 'file://' + os.path.join(model_share, 'meshes'),
-        },
-    ).toxml()
+    robot_description = ParameterValue(
+        Command([
+            'xacro ', xacro_file,
+            ' mesh_prefix:=',
+            'file://' + os.path.join(model_share, 'meshes'),
+            ' cmd_vel_topic:=', LaunchConfiguration('cmd_vel_topic'),
+        ]),
+        value_type=str,
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_gazebo_gui = LaunchConfiguration('use_gazebo_gui')
@@ -76,6 +79,8 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('use_gazebo_gui', default_value='true'),
         DeclareLaunchArgument('paused', default_value='false'),
+        DeclareLaunchArgument(
+            'cmd_vel_topic', default_value='/cmd_vel_safe'),
         DeclareLaunchArgument('world', default_value=default_world),
         DeclareLaunchArgument('x', default_value='0.0'),
         DeclareLaunchArgument('y', default_value='0.0'),

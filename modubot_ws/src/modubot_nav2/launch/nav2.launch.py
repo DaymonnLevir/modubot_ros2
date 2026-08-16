@@ -8,7 +8,7 @@ from launch.actions import (
     TimerAction,
     UnsetEnvironmentVariable,
 )
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import (
     AnyLaunchDescriptionSource,
     PythonLaunchDescriptionSource,
@@ -56,6 +56,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time", default="false")
     closed_loop = LaunchConfiguration("closed_loop", default="true")
     use_rviz = LaunchConfiguration("use_rviz")
+    use_collision_monitor = LaunchConfiguration("use_collision_monitor")
     configured_nav2_params = RewrittenYaml(
         source_file=LaunchConfiguration("nav2_params_file"),
         param_rewrites={
@@ -92,7 +93,7 @@ def generate_launch_description():
     )
 
     # B. Base móvel: uma única ponte serial + odometria
-    launch_base = IncludeLaunchDescription(
+    launch_base_safe = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory('modubot_serial_bridge'),
@@ -106,6 +107,23 @@ def generate_launch_description():
             'cmd_vel_topic': '/cmd_vel_safe',
             'params_file': LaunchConfiguration('base_params_file'),
         }.items(),
+        condition=IfCondition(use_collision_monitor),
+    )
+    launch_base_direct = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory('modubot_serial_bridge'),
+                'launch',
+                'base.launch.py',
+            )
+        ),
+        launch_arguments={
+            'port': LaunchConfiguration('base_port'),
+            'closed_loop': closed_loop,
+            'cmd_vel_topic': '/cmd_vel',
+            'params_file': LaunchConfiguration('base_params_file'),
+        }.items(),
+        condition=UnlessCondition(use_collision_monitor),
     )
 
     # C. A "Alma" do Robô (Estado e Juntas)
@@ -179,6 +197,7 @@ def generate_launch_description():
         name='collision_monitor',
         parameters=[configured_nav2_parameter_file],
         output='screen',
+        condition=IfCondition(use_collision_monitor),
     )
     node_collision_monitor_lifecycle = Node(
         package='nav2_lifecycle_manager',
@@ -190,6 +209,7 @@ def generate_launch_description():
             'node_names': ['collision_monitor'],
         }],
         output='screen',
+        condition=IfCondition(use_collision_monitor),
     )
     delayed_collision_monitor = TimerAction(
         period=2.0,
@@ -231,6 +251,8 @@ def generate_launch_description():
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("closed_loop", default_value="true"),
         DeclareLaunchArgument("use_rviz", default_value="false"),
+        DeclareLaunchArgument(
+            "use_collision_monitor", default_value="true"),
         DeclareLaunchArgument("rosbridge_port", default_value="9090"),
         DeclareLaunchArgument("base_port", default_value="/dev/ttyUSB0"),
         DeclareLaunchArgument("lidar_port", default_value="/dev/ttyUSB1"),
@@ -254,7 +276,8 @@ def generate_launch_description():
         SetEnvironmentVariable("ROS_LOCALHOST_ONLY", "0"),
 
         node_rplidar,
-        launch_base,
+        launch_base_safe,
+        launch_base_direct,
         node_robot_state_publisher,
         node_joint_state_publisher,
         node_script_filter,
