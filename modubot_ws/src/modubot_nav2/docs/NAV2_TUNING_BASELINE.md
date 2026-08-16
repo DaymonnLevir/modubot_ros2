@@ -7,10 +7,13 @@ for the physical odometry and braking calibrations listed below.
 
 ## Baseline decisions
 
-### Map and planning
+### Map and global planning
 
-- The global costmap tracks unknown space and NavFn is not allowed to plan
-  through it. Unmapped cells are therefore non-traversable.
+- The global costmap tracks unknown space and Smac Planner 2D is not allowed
+  to plan through it. Unmapped cells are therefore non-traversable.
+- Smac Planner 2D uses cost-aware A* on the native 0.05 m costmap. A travel
+  cost multiplier of 2.0 favors the center of the inflation potential without
+  making planning unnecessarily expensive.
 - The global obstacle layer uses `combination_method: 2`, preserving unknown
   cells from the static map instead of clearing them with lidar raytracing.
 - The tracked map used in an experiment must be stored in this repository. The
@@ -51,22 +54,22 @@ for the physical odometry and braking calibrations listed below.
 - Lidar observations persist for 0.25 s. This retains short clusters such as
   legs for multiple costmap cycles without leaving half-second ghost obstacles.
 
-### DWB and velocity smoothing
+### MPPI and velocity smoothing
 
 - Maximum speed is 0.20 m/s and maximum angular speed is 0.8 rad/s.
-- A valid moving trajectory must have at least 0.05 m/s translation or
-  0.10 rad/s rotation. Zero velocity remains available. The angular minimum
-  remains reachable from rest with the 10 Hz controller and 1.5 rad/s^2
-  acceleration limit.
+- MPPI runs at 20 Hz with a 0.05 s model interval. Sixty model steps provide a
+  3.0 s prediction horizon, equivalent to 0.60 m at maximum linear speed.
+- The initial batch contains 2000 sampled trajectories. This intentionally
+  starts at the high-quality end for the Jetson benchmark; reduce it to 1500,
+  1000 or 750 only if the controller misses its 20 Hz deadline.
+- One optimization iteration and pre-generated noise minimize runtime jitter.
+  Trajectory visualization remains disabled during navigation.
+- The differential-drive model uses the full rectangular footprint for
+  collision scoring. Cost, path and goal critics permit local obstacle
+  avoidance while preserving the intent of the Smac global path.
 - The velocity smoother removes commands below 0.03 m/s or 0.10 rad/s. These
-  are preliminary values below the DWB minima and must be replaced by measured
-  ground deadbands.
-- Twelve linear and twenty angular samples, a 2.0 s horizon and 0.03 m linear
-  granularity increase trajectory coverage while keeping the controller at
-  10 Hz.
-- Path distance and alignment critics are stronger than before so that the
-  robot returns to the planned centerline after caster disturbances. The full
-  footprint critic remains active for collision rejection.
+  values are also supplied to the MPPI deadband critic and must be replaced by
+  measured ground deadbands.
 - Progress is 0.10 m within 15 s. This allows low-speed alignment and obstacle
   negotiation without accepting a robot that is genuinely stuck.
 
@@ -80,7 +83,7 @@ for the physical odometry and braking calibrations listed below.
   least four scan points. This prevents isolated returns or normal lateral
   caster drift from continuously locking all differential-drive motion.
 - Recovery waiting is two seconds and backup distance is 0.20 m. Spin and
-  backup limits are explicitly aligned with the robot's DWB acceleration and
+  backup limits are explicitly aligned with the robot's velocity and
   angular limits.
 
 ## Required physical calibrations
@@ -93,7 +96,7 @@ same map, start pose, battery state and test route for comparisons.
      increments in both directions.
    - Repeat with pure angular commands from 0.15 to 0.80 rad/s.
    - Record the lowest command that starts promptly in every repetition.
-   - Update DWB `min_speed_xy`, `min_speed_theta` and smoother deadbands.
+   - Update the MPPI `VelocityDeadbandCritic` and smoother deadbands.
 
 2. **Wheel radius / distance scale**
    - Execute at least ten straight 1.5 m odometry trials in both directions.
@@ -119,10 +122,10 @@ same map, start pose, battery state and test route for comparisons.
      not jump when the casters align or people cross the scan.
    - Tune AMCL odometry noise only after the odometry scale is calibrated.
 
-6. **DWB and safety integration**
+6. **MPPI and safety integration**
    - Use a fixed route containing a corridor, a door, a static obstacle and a
      walking-person crossing.
-   - First evaluate global/local costmaps and DWB; then inspect monitor events.
+   - First evaluate global/local costmaps and MPPI; then inspect monitor events.
    - Run at least ten repetitions per final configuration and record success,
      travel time, minimum clearance, recoveries, stops and localization error.
 
