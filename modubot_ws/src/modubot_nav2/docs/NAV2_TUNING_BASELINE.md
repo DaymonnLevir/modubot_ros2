@@ -108,14 +108,28 @@ for the physical odometry and braking calibrations listed below.
 - On Humble, `max_points: 1` triggers after at least two scan readings enter
   the strip. A trigger zeros both linear and angular commands; normal obstacle
   avoidance and early speed selection remain the MPPI and costmap task.
-- Reverse recovery is disabled because the mechanically blocked rear lidar
-  sector cannot support it safely. Recovery first attempts 90-degree rotations
-  in both directions, then costmap clearing and waiting. In Humble, a zero spin
-  simulation horizon is used to keep this explicitly accepted in-place
-  rotation available.
-- The serial bridge also rejects commands with negative linear velocity, so
-  teleoperation and external applications cannot bypass the no-reverse policy.
-  Commands with zero linear velocity and nonzero angular velocity remain valid.
+- Reverse motion is disabled by default because the mechanically blocked rear
+  lidar sector cannot support it safely. The real and simulated launches expose
+  `allow_reverse` (default `false`). When enabled, it consistently releases
+  reverse Lattice expansion, MPPI sampling down to -0.15 m/s, and the serial
+  bridge. The smoother accepts this bounded range in both modes but never
+  creates a reverse command. Prefer-forward critics remain active.
+- Automatic recovery remains limited to 90-degree rotations, costmap clearing,
+  and waiting even when reverse motion is enabled. This prevents an unattended
+  backup maneuver into the rear blind sector. In Humble, a zero spin simulation
+  horizon keeps the explicitly accepted in-place rotation available.
+- With `allow_reverse:=false`, the serial bridge rejects negative linear
+  commands, so teleoperation and external applications cannot bypass the
+  no-reverse policy. Pure rotations remain valid.
+
+Enable the controlled reverse profile explicitly when required:
+
+```bash
+ros2 launch modubot_nav2 nav2.launch.py allow_reverse:=true
+```
+
+Omitting the argument, or setting it to `false`, restores the forward-only
+profile.
 
 ## Required physical calibrations
 

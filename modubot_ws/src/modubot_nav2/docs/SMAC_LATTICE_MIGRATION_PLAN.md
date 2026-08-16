@@ -19,7 +19,8 @@ rollback while it is validated.
 - Padded footprint represented by the costmaps:
   `x=[-0.46, 0.18] m`, `y=[-0.24, 0.24] m`.
 - Differential drive with in-place rotation.
-- Reverse planning and reverse commands must remain disabled.
+- Reverse planning and commands remain disabled by default. Controlled tests
+  may enable them consistently with the `allow_reverse` launch argument.
 - The installed Nav2 package includes the differential primitive set at:
   `/opt/ros/humble/share/nav2_smac_planner/sample_primitives/5cm_resolution/0.5m_turning_radius/diff/output.json`.
   It has 16 headings and 112 trajectories.
@@ -90,7 +91,8 @@ Use identical start and goal poses for both planner profiles.
    - static lidar obstacle placed on the original route.
 4. Reject any plan whose transformed footprint intersects a lethal or unknown
    cell at any pose.
-5. Confirm that no path segment requests reverse motion.
+5. With `allow_reverse:=false`, confirm that no path segment requests reverse
+   motion. With it enabled, confirm that reverse speed never exceeds 0.15 m/s.
 
 ## Phase 3: simulation comparison
 
@@ -128,7 +130,7 @@ Keep Smac Lattice as the validated default only when it:
 
 - produces no footprint-invalid paths;
 - crosses every required door;
-- never requests reverse motion;
+- never requests reverse motion in the default `allow_reverse:=false` profile;
 - keeps the 95th-percentile planning time within the 0.5 s replanning period
   on the Jetson;
 - improves or preserves minimum clearance in the repeated trials.

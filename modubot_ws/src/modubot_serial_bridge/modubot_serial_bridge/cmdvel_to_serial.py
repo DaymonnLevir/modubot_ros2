@@ -129,9 +129,11 @@ class CmdVelToSerial(Node):
         self.write_line('P 0')
         self.braked = True
         mode = 'fechada' if self.closed_loop else 'aberta'
+        reverse = 'habilitada' if self.allow_reverse else 'bloqueada'
         self.get_logger().info(
             f'ESP32 configurada: malha {mode}, '
-            f'K=({self.kp:g}, {self.ki:g}, {self.kd:g}), KFF={self.kff:g}')
+            f'K=({self.kp:g}, {self.ki:g}, {self.kd:g}), '
+            f'KFF={self.kff:g}, ré={reverse}')
 
     def on_cmd_vel(self, msg):
         linear = float(msg.linear.x)

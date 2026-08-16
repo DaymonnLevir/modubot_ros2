@@ -13,7 +13,7 @@ from launch.actions import (
 )
 from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.descriptions import ParameterFile
 from nav2_common.launch import RewrittenYaml
@@ -47,8 +47,14 @@ def generate_launch_description():
     )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
+    allow_reverse = LaunchConfiguration('allow_reverse')
     use_rviz = LaunchConfiguration('use_rviz')
     use_collision_monitor = LaunchConfiguration('use_collision_monitor')
+    reverse_vx_min = PythonExpression([
+        "'-0.15' if '",
+        allow_reverse,
+        "'.lower() in ('true', '1', 'yes', 'on') else '0.0'",
+    ])
 
     configured_nav2_params = RewrittenYaml(
         source_file=LaunchConfiguration('nav2_params_file'),
@@ -59,6 +65,8 @@ def generate_launch_description():
                 default_nav_through_poses_bt
             ),
             'lattice_filepath': default_lattice,
+            'allow_reverse_expansion': allow_reverse,
+            'vx_min': reverse_vx_min,
         },
         convert_types=True,
     )
@@ -175,6 +183,7 @@ def generate_launch_description():
         UnsetEnvironmentVariable('FASTRTPS_DEFAULT_PROFILES_FILE'),
         SetEnvironmentVariable('ROS_LOCALHOST_ONLY', '1'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument('allow_reverse', default_value='false'),
         DeclareLaunchArgument('use_rviz', default_value='true'),
         DeclareLaunchArgument(
             'use_collision_monitor', default_value='true'),

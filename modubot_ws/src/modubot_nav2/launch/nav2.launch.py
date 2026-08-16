@@ -13,7 +13,7 @@ from launch.launch_description_sources import (
     AnyLaunchDescriptionSource,
     PythonLaunchDescriptionSource,
 )
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.descriptions import ParameterFile
@@ -61,8 +61,14 @@ def generate_launch_description():
     )
     use_sim_time = LaunchConfiguration("use_sim_time", default="false")
     closed_loop = LaunchConfiguration("closed_loop", default="true")
+    allow_reverse = LaunchConfiguration("allow_reverse")
     use_rviz = LaunchConfiguration("use_rviz")
     use_collision_monitor = LaunchConfiguration("use_collision_monitor")
+    reverse_vx_min = PythonExpression([
+        "'-0.15' if '",
+        allow_reverse,
+        "'.lower() in ('true', '1', 'yes', 'on') else '0.0'",
+    ])
     configured_nav2_params = RewrittenYaml(
         source_file=LaunchConfiguration("nav2_params_file"),
         param_rewrites={
@@ -71,6 +77,8 @@ def generate_launch_description():
                 default_nav_through_poses_bt
             ),
             "lattice_filepath": default_lattice,
+            "allow_reverse_expansion": allow_reverse,
+            "vx_min": reverse_vx_min,
         },
         convert_types=True,
     )
@@ -111,6 +119,7 @@ def generate_launch_description():
         launch_arguments={
             'port': LaunchConfiguration('base_port'),
             'closed_loop': closed_loop,
+            'allow_reverse': allow_reverse,
             'cmd_vel_topic': '/cmd_vel_safe',
             'params_file': LaunchConfiguration('base_params_file'),
         }.items(),
@@ -127,6 +136,7 @@ def generate_launch_description():
         launch_arguments={
             'port': LaunchConfiguration('base_port'),
             'closed_loop': closed_loop,
+            'allow_reverse': allow_reverse,
             'cmd_vel_topic': '/cmd_vel',
             'params_file': LaunchConfiguration('base_params_file'),
         }.items(),
@@ -257,6 +267,7 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="false"),
         DeclareLaunchArgument("closed_loop", default_value="true"),
+        DeclareLaunchArgument("allow_reverse", default_value="false"),
         DeclareLaunchArgument("use_rviz", default_value="false"),
         DeclareLaunchArgument(
             "use_collision_monitor", default_value="true"),
