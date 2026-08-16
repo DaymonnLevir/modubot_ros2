@@ -331,15 +331,14 @@ collision_monitor:
     source_timeout: 0.35
     base_shift_correction: true
     stop_pub_timeout: 1.0
-    polygons: ["SlowdownZone"]
-    SlowdownZone:
+    polygons: ["StopZone"]
+    StopZone:
       type: "polygon"
-      points: [0.45, 0.32, 0.45, -0.32, 0.18, -0.32, 0.18, 0.32]
-      action_type: "slowdown"
-      max_points: 2
-      slowdown_ratio: 0.80
+      points: [0.40, 0.30, 0.40, -0.30, 0.18, -0.30, 0.18, 0.30]
+      action_type: "stop"
+      max_points: 1
       visualize: true
-      polygon_pub_topic: "collision_monitor/slowdown_zone"
+      polygon_pub_topic: "collision_monitor/stop_zone"
       enabled: true
     observation_sources: ["scan"]
     scan:

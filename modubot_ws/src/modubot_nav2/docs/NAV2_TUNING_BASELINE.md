@@ -79,10 +79,13 @@ for the physical odometry and braking calibrations listed below.
 
 - The monitor is an independent final safety layer, not the normal obstacle
   avoidance controller.
-- The only monitor polygon reaches 0.45 m forward and scales both linear and
-  angular commands to 80% after at least three scan points are present.
-- There is no static full-stop polygon because it also blocks the rotation
-  needed to escape. Collision avoidance remains the MPPI and costmap task.
+- The only monitor polygon is a final emergency-stop strip in front of the
+  robot. In the `base_link` convention, `+x` points longitudinally toward the
+  narrow front face and `y` spans the robot width. The strip covers
+  `x=[0.18, 0.40] m` and `y=[-0.30, 0.30] m`.
+- On Humble, `max_points: 1` triggers after at least two scan readings enter
+  the strip. A trigger zeros both linear and angular commands; normal obstacle
+  avoidance and early speed selection remain the MPPI and costmap task.
 - Reverse recovery is disabled because the mechanically blocked rear lidar
   sector cannot support it safely. Recovery alternates 90-degree rotations in
   both directions and waiting. In Humble, a zero spin simulation horizon is
