@@ -50,7 +50,9 @@ for the physical odometry and braking calibrations listed below.
   preference; these roles should not be mixed.
 - Global inflation uses a 0.70 m radius and 3.0 scaling factor to favor corridor
   centers without making doors unnecessarily costly. Local inflation uses a
-  0.45 m radius and 4.0 scaling factor for a shorter avoidance gradient.
+  0.60 m radius and 4.0 scaling factor, extending the avoidance gradient while
+  keeping its faster decay near doors. The 6 x 6 m rolling window uses the full
+  configured 3 m local obstacle range instead of clipping it at 2 m.
 - Lidar observations persist for 0.25 s. This retains short clusters such as
   legs for multiple costmap cycles without leaving half-second ghost obstacles.
 
@@ -62,6 +64,8 @@ for the physical odometry and braking calibrations listed below.
   Humble ARM64 binary during noise-generator initialization on Jetson.
 - MPPI runs at 10 Hz with a 0.10 s model interval. Forty-eight model steps
   provide a 4.8 s prediction horizon, equivalent to 1.20 m at maximum speed.
+- The global costmap and Smac replanning pipeline run at 2 Hz so newly marked
+  obstacles can alter the route without waiting for a one-second cycle.
 - The batch contains 700 sampled trajectories. The resulting 33,600 trajectory
   states per cycle are 44% fewer than the previous 800 x 75 configuration.
 - One optimization iteration and pre-generated noise minimize runtime jitter.
@@ -72,8 +76,8 @@ for the physical odometry and braking calibrations listed below.
 - The velocity smoother removes commands below 0.03 m/s or 0.10 rad/s. These
   values are also supplied to the MPPI deadband critic and must be replaced by
   measured ground deadbands.
-- Progress is 0.10 m within 15 s. This allows low-speed alignment and obstacle
-  negotiation without accepting a robot that is genuinely stuck.
+- Progress is 0.05 m within 8 s. Small caster-induced motion is not enough to
+  hide a genuine deadlock, and the recovery sequence starts sooner.
 
 ### Collision monitor and recoveries
 
@@ -82,14 +86,16 @@ for the physical odometry and braking calibrations listed below.
 - The only monitor polygon is a final emergency-stop strip in front of the
   robot. In the `base_link` convention, `+x` points longitudinally toward the
   narrow front face and `y` spans the robot width. The strip covers
-  `x=[0.18, 0.40] m` and `y=[-0.30, 0.30] m`.
+  `x=[0.18, 0.28] m` and `y=[-0.26, 0.26] m`, leaving about 0.10 m beyond the
+  padded front footprint. It is intentionally not an early-avoidance layer.
 - On Humble, `max_points: 1` triggers after at least two scan readings enter
   the strip. A trigger zeros both linear and angular commands; normal obstacle
   avoidance and early speed selection remain the MPPI and costmap task.
 - Reverse recovery is disabled because the mechanically blocked rear lidar
-  sector cannot support it safely. Recovery alternates 90-degree rotations in
-  both directions and waiting. In Humble, a zero spin simulation horizon is
-  used to keep this explicitly accepted in-place rotation available.
+  sector cannot support it safely. Recovery first attempts 90-degree rotations
+  in both directions, then costmap clearing and waiting. In Humble, a zero spin
+  simulation horizon is used to keep this explicitly accepted in-place
+  rotation available.
 - The serial bridge also rejects commands with negative linear velocity, so
   teleoperation and external applications cannot bypass the no-reverse policy.
   Commands with zero linear velocity and nonzero angular velocity remain valid.
