@@ -57,6 +57,9 @@ for the physical odometry and braking calibrations listed below.
 ### MPPI and velocity smoothing
 
 - Maximum speed is 0.20 m/s and maximum angular speed is 0.8 rad/s.
+- `nav2_mppi_controller` is built natively from the vendored Nav2 1.1.20
+  source. This workspace overlay avoids the known `SIGILL` failure of the
+  Humble ARM64 binary during noise-generator initialization on Jetson.
 - MPPI runs at 20 Hz with a 0.05 s model interval. Sixty model steps provide a
   3.0 s prediction horizon, equivalent to 0.60 m at maximum linear speed.
 - The initial batch contains 2000 sampled trajectories. This intentionally
