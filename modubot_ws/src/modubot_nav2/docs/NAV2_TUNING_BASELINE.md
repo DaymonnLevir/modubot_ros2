@@ -2,7 +2,7 @@
 
 This document records the reasoning behind the conservative baseline in
 `config/nav2_params.yaml`. The values are intended for the first integrated
-ground test at a maximum linear speed of 0.20 m/s. They are not a substitute
+ground test at a maximum linear speed of 0.25 m/s. They are not a substitute
 for the physical odometry and braking calibrations listed below.
 
 ## Baseline decisions
@@ -11,13 +11,13 @@ for the physical odometry and braking calibrations listed below.
 
 - The global costmap tracks unknown space and Smac Planner 2D is not allowed
   to plan through it. Unmapped cells are therefore non-traversable.
-- Smac Planner 2D uses cost-aware A* on the native 0.05 m costmap. A travel
-  cost multiplier of 2.0 favors the center of the inflation potential without
-  making planning unnecessarily expensive.
+- Smac Planner 2D uses cost-aware A* downsampled from 0.05 m to 0.10 m. This
+  reduces the search grid to one quarter of its native cell count. A travel
+  cost multiplier of 4.0 retains a preference for corridor centers.
 - The global obstacle layer uses `combination_method: 2`, preserving unknown
   cells from the static map instead of clearing them with lidar raytracing.
 - The tracked map used in an experiment must be stored in this repository. The
-  current default remains `maps/piso01.yaml`; a map passed through the `map`
+  current default is `maps/PisoInferiorDC.yaml`; a map passed through the `map`
   launch argument must also be archived before an article experiment.
 
 ### Lidar
@@ -31,10 +31,10 @@ for the physical odometry and braking calibrations listed below.
 
 ### AMCL
 
-- Updates require 0.05 m or 0.05 rad, reducing the previous sensitivity to
+- Updates require 0.08 m or 0.08 rad, reducing sensitivity to
   encoder quantization and caster-induced oscillations.
-- Ninety evenly spaced beams provide more information than the Nav2 example
-  baseline without retaining the previous 120-beam processing load.
+- Eighty evenly spaced beams preserve broad scan coverage while reducing the
+  particle-filter processing load.
 - `likelihood_field_prob` is used so the enabled beam-skipping parameters are
   actually applied in environments containing people and other dynamic
   obstacles.
@@ -48,23 +48,22 @@ for the physical odometry and braking calibrations listed below.
 - The physical footprint remains `x=[-0.42, 0.14] m`, `y=[-0.20, 0.20] m`.
 - Padding is 0.04 m. It is a collision margin, while inflation is a path-cost
   preference; these roles should not be mixed.
-- Both inflation layers use a 0.55 m radius and 2.5 scaling factor. This keeps a
-  useful potential field while restoring passage through doors that became
-  impractical with the former 0.75/0.85 m radii and 1.4 scaling factor.
+- Global inflation uses a 0.70 m radius and 3.0 scaling factor to favor corridor
+  centers without making doors unnecessarily costly. Local inflation uses a
+  0.45 m radius and 4.0 scaling factor for a shorter avoidance gradient.
 - Lidar observations persist for 0.25 s. This retains short clusters such as
   legs for multiple costmap cycles without leaving half-second ghost obstacles.
 
 ### MPPI and velocity smoothing
 
-- Maximum speed is 0.20 m/s and maximum angular speed is 0.8 rad/s.
+- Maximum speed is 0.25 m/s and maximum angular speed is 0.8 rad/s.
 - `nav2_mppi_controller` is built natively from the vendored Nav2 1.1.20
   source. This workspace overlay avoids the known `SIGILL` failure of the
   Humble ARM64 binary during noise-generator initialization on Jetson.
-- MPPI runs at 20 Hz with a 0.05 s model interval. Sixty model steps provide a
-  3.0 s prediction horizon, equivalent to 0.60 m at maximum linear speed.
-- The initial batch contains 2000 sampled trajectories. This intentionally
-  starts at the high-quality end for the Jetson benchmark; reduce it to 1500,
-  1000 or 750 only if the controller misses its 20 Hz deadline.
+- MPPI runs at 10 Hz with a 0.10 s model interval. Forty-eight model steps
+  provide a 4.8 s prediction horizon, equivalent to 1.20 m at maximum speed.
+- The batch contains 700 sampled trajectories. The resulting 33,600 trajectory
+  states per cycle are 44% fewer than the previous 800 x 75 configuration.
 - One optimization iteration and pre-generated noise minimize runtime jitter.
   Trajectory visualization remains disabled during navigation.
 - The differential-drive model uses the full rectangular footprint for
@@ -80,14 +79,17 @@ for the physical odometry and braking calibrations listed below.
 
 - The monitor is an independent final safety layer, not the normal obstacle
   avoidance controller.
-- The slowdown zone reaches 0.65 m forward and scales both linear and angular
-  commands to 65% after at least three scan points are present.
-- Full stop is restricted to the 0.18--0.23 m frontal strip and requires at
-  least four scan points. This prevents isolated returns or normal lateral
-  caster drift from continuously locking all differential-drive motion.
-- Recovery waiting is two seconds and backup distance is 0.20 m. Spin and
-  backup limits are explicitly aligned with the robot's velocity and
-  angular limits.
+- The only monitor polygon reaches 0.45 m forward and scales both linear and
+  angular commands to 80% after at least three scan points are present.
+- There is no static full-stop polygon because it also blocks the rotation
+  needed to escape. Collision avoidance remains the MPPI and costmap task.
+- Reverse recovery is disabled because the mechanically blocked rear lidar
+  sector cannot support it safely. Recovery alternates 90-degree rotations in
+  both directions and waiting. In Humble, a zero spin simulation horizon is
+  used to keep this explicitly accepted in-place rotation available.
+- The serial bridge also rejects commands with negative linear velocity, so
+  teleoperation and external applications cannot bypass the no-reverse policy.
+  Commands with zero linear velocity and nonzero angular velocity remain valid.
 
 ## Required physical calibrations
 
@@ -110,13 +112,14 @@ same map, start pose, battery state and test route for comparisons.
 3. **Effective wheel separation**
    - Execute repeated 360-degree rotations in both directions.
    - Adjust effective separation until odometry rotation matches the external
-     measurement. This value may differ from the geometric 0.207 m because of
+     measurement. The current effective value is 0.225 m and may differ from
+     the geometric wheel-center distance because of
      tire scrub, load distribution and caster forces.
 
 4. **PI response and braking**
-   - Measure rise time, overshoot and settling at 0.05, 0.10, 0.15 and 0.20 m/s.
-   - Measure stopping distance from 0.20 m/s on the intended floor.
-   - Update PI, acceleration/deceleration limits and the emergency-stop depth
+   - Measure rise time, overshoot and settling at 0.05, 0.10, 0.15, 0.20 and 0.25 m/s.
+   - Measure stopping distance from 0.25 m/s on the intended floor.
+   - Update PI, acceleration/deceleration limits and the slowdown-zone depth
      from these measurements.
 
 5. **Localization-only validation**

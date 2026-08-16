@@ -77,7 +77,7 @@
       <update_rate>50</update_rate>
       <left_joint>left_wheel_joint</left_joint>
       <right_joint>right_wheel_joint</right_joint>
-      <wheel_separation>0.207</wheel_separation>
+      <wheel_separation>0.225</wheel_separation>
       <wheel_diameter>0.156</wheel_diameter>
       <max_wheel_acceleration>4.5</max_wheel_acceleration>
       <max_wheel_torque>10.0</max_wheel_torque>

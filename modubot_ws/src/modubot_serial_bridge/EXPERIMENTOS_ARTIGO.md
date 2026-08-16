@@ -49,7 +49,7 @@ ros2 run modubot_serial_bridge feedforward_calibration \
   --command-time 6 \
   --ticks-left 91 --ticks-right 91 \
   --wheel-radius-left 0.078 --wheel-radius-right 0.078 \
-  --wheel-separation 0.207 \
+  --wheel-separation 0.225 \
   --surface laboratorio \
   --campaign-name article_A_open_loop
 ```
@@ -103,7 +103,7 @@ ros2 run modubot_serial_bridge odometry_trajectory_experiment \
   --kp 12 --ki 40 --kd 0 --kff 0 --dac-min 0 \
   --ticks-left 91 --ticks-right 91 \
   --wheel-radius-left 0.078 --wheel-radius-right 0.078 \
-  --wheel-separation 0.207 \
+  --wheel-separation 0.225 \
   --surface laboratorio \
   --video-file article_C_straight_pi.mp4 \
   --campaign-name article_C_straight_pi

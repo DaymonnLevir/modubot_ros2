@@ -1,7 +1,7 @@
 map_server:
   ros__parameters:
     use_sim_time: false
-    yaml_filename: "piso01.yaml"
+    yaml_filename: "PisoInferiorDC.yaml"
     topic_name: "map"
     frame_id: "map"
 
@@ -21,9 +21,9 @@ amcl:
     scan_topic: "scan_filtered"
     min_particles: 500
     max_particles: 2000
-    max_beams: 90
-    update_min_d: 0.05
-    update_min_a: 0.05
+    max_beams: 80
+    update_min_d: 0.08
+    update_min_a: 0.08
     resample_interval: 1
     transform_tolerance: 0.5
     recovery_alpha_fast: 0.1
@@ -64,17 +64,18 @@ bt_navigator:
     robot_base_frame: "base_link"
     bt_loop_duration: 100
     default_nav_to_pose_bt_xml: "__MODUBOT_NAV_TO_POSE_BT__"
+    default_nav_through_poses_bt_xml: "__MODUBOT_NAV_THROUGH_POSES_BT__"
 
 planner_server:
   ros__parameters:
     use_sim_time: false
-    expected_planner_frequency: 2.0
+    expected_planner_frequency: 1.0
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_smac_planner/SmacPlanner2D"
       tolerance: 0.20
-      downsample_costmap: false
-      downsampling_factor: 1
+      downsample_costmap: true
+      downsampling_factor: 2
       allow_unknown: false
       max_iterations: 1000000
       max_on_approach_iterations: 1000
@@ -111,18 +112,18 @@ controller_server:
       stateful: true
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
-      time_steps: 75
+      time_steps: 48
       model_dt: 0.1
-      batch_size: 800
+      batch_size: 700
       vx_std: 0.20
       vy_std: 0.0
       wz_std: 0.60
-      vx_max: 0.20
+      vx_max: 0.25
       vx_min: 0.0
       vy_max: 0.0
       wz_max: 0.8
       iteration_count: 1
-      prune_distance: 2.0
+      prune_distance: 1.5
       transform_tolerance: 0.5
       temperature: 0.3
       gamma: 0.015
@@ -151,7 +152,7 @@ controller_server:
       CostCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 6.0
+        cost_weight: 4.0
         critical_cost: 300.0
         consider_footprint: true
         collision_cost: 1000000.0
@@ -160,7 +161,7 @@ controller_server:
         enabled: true
         cost_power: 1
         cost_weight: 5.0
-        threshold_to_consider: 1.4
+        threshold_to_consider: 1.2
       GoalAngleCritic:
         enabled: true
         cost_power: 1
@@ -169,18 +170,18 @@ controller_server:
       PathAlignCritic:
         enabled: true
         cost_power: 1
-        cost_weight: 8.0
+        cost_weight: 6.0
         max_path_occupancy_ratio: 0.05
         trajectory_point_step: 3
         threshold_to_consider: 0.5
-        offset_from_furthest: 20
+        offset_from_furthest: 8
         use_path_orientations: false
       PathFollowCritic:
         enabled: true
         cost_power: 1
         cost_weight: 5.0
         offset_from_furthest: 5
-        threshold_to_consider: 1.4
+        threshold_to_consider: 1.2
       PathAngleCritic:
         enabled: true
         cost_power: 1
@@ -206,7 +207,7 @@ global_costmap:
       use_sim_time: false
       global_frame: "map"
       robot_base_frame: "base_link"
-      update_frequency: 2.0
+      update_frequency: 1.0
       publish_frequency: 1.0
       resolution: 0.05
       transform_tolerance: 0.5
@@ -238,8 +239,8 @@ global_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.85
-        cost_scaling_factor: 2.0
+        inflation_radius: 0.70
+        cost_scaling_factor: 3.0
         inflate_unknown: false
         inflate_around_unknown: true
 
@@ -280,8 +281,8 @@ local_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.55
-        cost_scaling_factor: 2.5
+        inflation_radius: 0.45
+        cost_scaling_factor: 4.0
 
 velocity_smoother:
   ros__parameters:
@@ -289,8 +290,8 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
-    max_velocity: [0.20, 0.0, 0.8]
-    min_velocity: [-0.20, 0.0, -0.8]
+    max_velocity: [0.25, 0.0, 0.8]
+    min_velocity: [0.0, 0.0, -0.8]
     max_accel: [0.5, 0.0, 1.5]
     max_decel: [-0.8, 0.0, -2.0]
     odom_topic: "odom"
@@ -304,19 +305,17 @@ behavior_server:
     costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
-    behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
+    behavior_plugins: ["spin", "wait"]
     spin:
       plugin: "nav2_behaviors/Spin"
-    backup:
-      plugin: "nav2_behaviors/BackUp"
-    drive_on_heading:
-      plugin: "nav2_behaviors/DriveOnHeading"
     wait:
       plugin: "nav2_behaviors/Wait"
     global_frame: odom
     robot_base_frame: base_link
     transform_tolerance: 0.5
-    simulate_ahead_time: 1.5
+    # Humble has no per-goal switch to disable Spin collision checking. A zero
+    # horizon keeps in-place rotation available as the only active recovery.
+    simulate_ahead_time: 0.0
     max_rotational_vel: 0.8
     min_rotational_vel: 0.35
     rotational_acc_lim: 1.5
@@ -332,21 +331,13 @@ collision_monitor:
     source_timeout: 0.35
     base_shift_correction: true
     stop_pub_timeout: 1.0
-    polygons: ["EmergencyStopZone", "SlowdownZone"]
-    EmergencyStopZone:
-      type: "polygon"
-      points: [0.23, 0.24, 0.23, -0.24, 0.18, -0.24, 0.18, 0.24]
-      action_type: "stop"
-      max_points: 3
-      visualize: true
-      polygon_pub_topic: "collision_monitor/emergency_stop_zone"
-      enabled: true
+    polygons: ["SlowdownZone"]
     SlowdownZone:
       type: "polygon"
-      points: [0.65, 0.34, 0.65, -0.34, 0.18, -0.34, 0.18, 0.34]
+      points: [0.45, 0.32, 0.45, -0.32, 0.18, -0.32, 0.18, 0.32]
       action_type: "slowdown"
       max_points: 2
-      slowdown_ratio: 0.65
+      slowdown_ratio: 0.80
       visualize: true
       polygon_pub_topic: "collision_monitor/slowdown_zone"
       enabled: true

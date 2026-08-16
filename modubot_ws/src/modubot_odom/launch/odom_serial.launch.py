@@ -15,7 +15,7 @@ def generate_launch_description():
                     'ticks_per_rev_left': 91.0,
                     'ticks_per_rev_right': 91.0,
                     'wheel_radius': 0.078,
-                    'wheel_separation': 0.207,
+                    'wheel_separation': 0.225,
                     'frame_id': 'odom',
                     'child_frame_id': 'base_link',
                     'debug': False,

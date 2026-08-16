@@ -41,12 +41,17 @@ def generate_launch_description():
         "config",
         "modubot_params.yaml",
     )
-    default_map = os.path.join(nav2_share, "maps", "piso01.yaml")
+    default_map = os.path.join(nav2_share, "maps", "PisoInferiorDC.yaml")
     default_rviz = os.path.join(nav2_share, "rviz", "nav2.rviz")
     default_nav_bt = os.path.join(
         nav2_share,
         "behavior_trees",
         "navigate_to_pose_realtime.xml",
+    )
+    default_nav_through_poses_bt = os.path.join(
+        nav2_share,
+        "behavior_trees",
+        "navigate_through_poses_realtime.xml",
     )
     use_sim_time = LaunchConfiguration("use_sim_time", default="false")
     closed_loop = LaunchConfiguration("closed_loop", default="true")
@@ -55,6 +60,9 @@ def generate_launch_description():
         source_file=LaunchConfiguration("nav2_params_file"),
         param_rewrites={
             "default_nav_to_pose_bt_xml": default_nav_bt,
+            "default_nav_through_poses_bt_xml": (
+                default_nav_through_poses_bt
+            ),
         },
         convert_types=True,
     )

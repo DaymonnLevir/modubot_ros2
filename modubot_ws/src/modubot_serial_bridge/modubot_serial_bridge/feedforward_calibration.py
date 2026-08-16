@@ -847,7 +847,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--ticks-right', type=float, default=91.0)
     parser.add_argument('--wheel-radius-left', type=float, default=0.078)
     parser.add_argument('--wheel-radius-right', type=float, default=0.078)
-    parser.add_argument('--wheel-separation', type=float, default=0.207)
+    parser.add_argument('--wheel-separation', type=float, default=0.225)
     parser.add_argument('--v-wheel-max', type=float, default=0.6)
     parser.add_argument('--dac-reference-voltage', type=float, default=3.3)
     parser.add_argument('--surface', default='not_recorded')

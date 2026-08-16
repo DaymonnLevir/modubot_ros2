@@ -16,7 +16,7 @@ class SerialOdomNode(Node):
         self.declare_parameter('ticks_per_rev_left', 91.0)
         self.declare_parameter('ticks_per_rev_right', 91.0)
         self.declare_parameter('wheel_radius', 0.078)
-        self.declare_parameter('wheel_separation', 0.207)
+        self.declare_parameter('wheel_separation', 0.225)
         self.declare_parameter('frame_id', 'odom')
         self.declare_parameter('child_frame_id', 'base_link')
         self.declare_parameter('publish_rate', 20.0)

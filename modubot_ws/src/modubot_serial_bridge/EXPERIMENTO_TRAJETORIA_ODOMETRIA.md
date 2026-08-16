@@ -103,7 +103,7 @@ ros2 run modubot_serial_bridge odometry_trajectory_experiment \
   --ticks-right 91 \
   --wheel-radius-left 0.078 \
   --wheel-radius-right 0.078 \
-  --wheel-separation 0.207 \
+  --wheel-separation 0.225 \
   --surface laboratorio \
   --video-file VID_001.mp4 \
   --campaign-name pilot_odom_straight

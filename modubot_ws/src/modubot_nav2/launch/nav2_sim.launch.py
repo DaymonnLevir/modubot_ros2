@@ -4,7 +4,13 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    SetEnvironmentVariable,
+    TimerAction,
+    UnsetEnvironmentVariable,
+)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -28,6 +34,11 @@ def generate_launch_description():
         'behavior_trees',
         'navigate_to_pose_realtime.xml',
     )
+    default_nav_through_poses_bt = os.path.join(
+        nav2_share,
+        'behavior_trees',
+        'navigate_through_poses_realtime.xml',
+    )
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     use_rviz = LaunchConfiguration('use_rviz')
@@ -37,6 +48,9 @@ def generate_launch_description():
         param_rewrites={
             'use_sim_time': use_sim_time,
             'default_nav_to_pose_bt_xml': default_nav_bt,
+            'default_nav_through_poses_bt_xml': (
+                default_nav_through_poses_bt
+            ),
         },
         convert_types=True,
     )
@@ -125,6 +139,12 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        # Keep the simulator isolated from Jetson/VPN discovery settings. All
+        # simulated nodes and the bundled RViz run on this WSL instance.
+        UnsetEnvironmentVariable('ROS_DISCOVERY_SERVER'),
+        UnsetEnvironmentVariable('FASTDDS_DEFAULT_PROFILES_FILE'),
+        UnsetEnvironmentVariable('FASTRTPS_DEFAULT_PROFILES_FILE'),
+        SetEnvironmentVariable('ROS_LOCALHOST_ONLY', '1'),
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('use_rviz', default_value='true'),
         DeclareLaunchArgument('use_gazebo_gui', default_value='true'),

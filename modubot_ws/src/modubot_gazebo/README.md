@@ -36,8 +36,11 @@ ros2 launch modubot_nav2 nav2_sim.launch.py
 ```
 
 The launch waits for Gazebo to load the detailed DC world and robot meshes
-before activating Nav2. On slower computers, the first window may therefore
-take about 20--30 seconds to appear.
+before activating Nav2. When the workspace is under `/mnt/c`, WSL may take
+about one or two minutes before printing the first Gazebo process messages;
+this initial silence is expected. The launch also isolates ROS discovery to
+the local WSL instance so stale Jetson, VPN, or discovery-server settings do
+not interfere with the simulation.
 
 Useful options:
 

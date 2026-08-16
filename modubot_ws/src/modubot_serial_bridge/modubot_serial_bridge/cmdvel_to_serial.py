@@ -17,7 +17,7 @@ class CmdVelToSerial(Node):
         self.declare_parameter('baud', 115200)
         self.declare_parameter('cmd_vel_topic', '/cmd_vel')
         self.declare_parameter('serial_rx_topic', '/modubot/serial_rx')
-        self.declare_parameter('wheel_separation', 0.207)
+        self.declare_parameter('wheel_separation', 0.225)
         self.declare_parameter('wheel_radius', 0.078)
         self.declare_parameter('max_wheel_speed', 0.6)
         self.declare_parameter('ticks_per_rev_left', 91.0)
@@ -25,6 +25,7 @@ class CmdVelToSerial(Node):
         self.declare_parameter('send_rate', 20.0)
         self.declare_parameter('read_rate', 100.0)
         self.declare_parameter('cmd_timeout', 0.5)
+        self.declare_parameter('allow_reverse', False)
         self.declare_parameter('closed_loop', True)
         self.declare_parameter('kp', 12.0)
         self.declare_parameter('ki', 40.0)
@@ -48,6 +49,8 @@ class CmdVelToSerial(Node):
         self.send_rate = float(self.get_parameter('send_rate').value)
         self.read_rate = float(self.get_parameter('read_rate').value)
         self.cmd_timeout = float(self.get_parameter('cmd_timeout').value)
+        self.allow_reverse = bool(
+            self.get_parameter('allow_reverse').value)
         self.closed_loop = bool(self.get_parameter('closed_loop').value)
         self.kp = float(self.get_parameter('kp').value)
         self.ki = float(self.get_parameter('ki').value)
@@ -131,10 +134,14 @@ class CmdVelToSerial(Node):
             f'K=({self.kp:g}, {self.ki:g}, {self.kd:g}), KFF={self.kff:g}')
 
     def on_cmd_vel(self, msg):
-        left = float(msg.linear.x) - (
-            self.wheel_separation / 2.0) * float(msg.angular.z)
-        right = float(msg.linear.x) + (
-            self.wheel_separation / 2.0) * float(msg.angular.z)
+        linear = float(msg.linear.x)
+        angular = float(msg.angular.z)
+        if linear < 0.0 and not self.allow_reverse:
+            linear = 0.0
+            angular = 0.0
+
+        left = linear - (self.wheel_separation / 2.0) * angular
+        right = linear + (self.wheel_separation / 2.0) * angular
 
         peak = max(abs(left), abs(right))
         if peak > self.max_wheel_speed:
