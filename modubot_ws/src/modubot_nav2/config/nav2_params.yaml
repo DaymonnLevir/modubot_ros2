@@ -74,8 +74,8 @@ planner_server:
     GridBased:
       plugin: "nav2_smac_planner/SmacPlanner2D"
       tolerance: 0.20
-      downsample_costmap: true
-      downsampling_factor: 2
+      downsample_costmap: false
+      downsampling_factor: 1
       allow_unknown: false
       max_iterations: 1000000
       max_on_approach_iterations: 1000
@@ -85,10 +85,10 @@ planner_server:
       smooth_path: true
       smoother:
         max_iterations: 1000
-        w_smooth: 0.3
-        w_data: 0.2
+        w_smooth: 0.2
+        w_data: 0.4
         tolerance: 1.0e-10
-        do_refinement: true
+        do_refinement: false
 
 controller_server:
   ros__parameters:
@@ -223,7 +223,7 @@ global_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         footprint_clearing_enabled: true
-        combination_method: 2
+        combination_method: 1
         observation_sources: "scan"
         scan:
           topic: "/scan_filtered"
@@ -239,8 +239,8 @@ global_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.70
-        cost_scaling_factor: 3.0
+        inflation_radius: 1.20
+        cost_scaling_factor: 1.5
         inflate_unknown: false
         inflate_around_unknown: true
 

@@ -11,11 +11,17 @@ for the physical odometry and braking calibrations listed below.
 
 - The global costmap tracks unknown space and Smac Planner 2D is not allowed
   to plan through it. Unmapped cells are therefore non-traversable.
-- Smac Planner 2D uses cost-aware A* downsampled from 0.05 m to 0.10 m. This
-  reduces the search grid to one quarter of its native cell count. A travel
-  cost multiplier of 4.0 retains a preference for corridor centers.
-- The global obstacle layer uses `combination_method: 2`, preserving unknown
-  cells from the static map instead of clearing them with lidar raytracing.
+- Smac Planner 2D uses cost-aware A* at the native 0.05 m costmap resolution.
+  A travel cost multiplier of 4.0 retains a preference for corridor centers;
+  full resolution avoids the 0.10 m quantization introduced by the previous
+  downsampling configuration.
+- The global obstacle layer uses `combination_method: 1`. Nav2 Humble 1.1.20
+  implements only methods 0 and 1; method 2 falls through without merging the
+  lidar obstacle layer into the master costmap. Method 1 therefore ensures
+  that detected obstacles participate in global planning. Its interaction
+  with unknown-space clearing must be checked in the migration tests; a
+  backport of `MaximumWithoutUnknownOverwrite` is the strict solution if
+  preserving every static unknown cell is required.
 - The tracked map used in an experiment must be stored in this repository. The
   current default is `maps/PisoInferiorDC.yaml`; a map passed through the `map`
   launch argument must also be archived before an article experiment.
@@ -48,11 +54,17 @@ for the physical odometry and braking calibrations listed below.
 - The physical footprint remains `x=[-0.42, 0.14] m`, `y=[-0.20, 0.20] m`.
 - Padding is 0.04 m. It is a collision margin, while inflation is a path-cost
   preference; these roles should not be mixed.
-- Global inflation uses a 0.70 m radius and 3.0 scaling factor to favor corridor
-  centers without making doors unnecessarily costly. Local inflation uses a
-  0.60 m radius and 4.0 scaling factor, extending the avoidance gradient while
-  keeping its faster decay near doors. The 6 x 6 m rolling window uses the full
-  configured 3 m local obstacle range instead of clipping it at 2 m.
+- Global inflation uses a 1.20 m radius and 1.5 scaling factor. The wider,
+  slower-decaying potential field is intended to reduce the zero-cost band in
+  corridors and give Smac a continuous preference for greater clearance.
+  Local inflation remains at a 0.60 m radius and 4.0 scaling factor so the
+  controller can still cross narrow doors. The 6 x 6 m rolling window uses the
+  full configured 3 m local obstacle range instead of clipping it at 2 m.
+- Smac Planner 2D still approximates the robot as circular. Because ModuBot has
+  an asymmetric rectangular footprint, the next planner baseline must use
+  Smac Lattice with differential-drive primitives and SE2 footprint checking.
+  Until that migration is validated, the current global path is cost-aware but
+  is not a complete orientation-dependent collision model of the chassis.
 - Lidar observations persist for 0.25 s. This retains short clusters such as
   legs for multiple costmap cycles without leaving half-second ghost obstacles.
 
@@ -70,6 +82,10 @@ for the physical odometry and braking calibrations listed below.
   states per cycle are 44% fewer than the previous 800 x 75 configuration.
 - One optimization iteration and pre-generated noise minimize runtime jitter.
   Trajectory visualization remains disabled during navigation.
+- The mandatory Smac 2D smoother favors retention of the cost-aware A* path
+  (`w_data: 0.4`, `w_smooth: 0.2`) and disables recursive refinement. This
+  reduces non-cost-aware corner cutting while preserving continuous paths for
+  MPPI.
 - The differential-drive model uses the full rectangular footprint for
   collision scoring. Cost, path and goal critics permit local obstacle
   avoidance while preserving the intent of the Smac global path.
@@ -154,3 +170,4 @@ same map, start pose, battery state and test route for comparisons.
 - Linear and angular deadbands.
 - AMCL odometry noise coefficients.
 - Collision-zone depth derived from measured latency and stopping distance.
+- Smac Lattice primitives and penalties for the full asymmetric footprint.
