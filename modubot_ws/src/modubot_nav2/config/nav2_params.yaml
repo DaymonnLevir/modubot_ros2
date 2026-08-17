@@ -241,8 +241,8 @@ global_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 1.20
-        cost_scaling_factor: 1.5
+        inflation_radius: 1.30
+        cost_scaling_factor: 1.6
         inflate_unknown: false
         inflate_around_unknown: true
 
@@ -261,7 +261,7 @@ local_costmap:
       transform_tolerance: 0.5
 
       footprint: "[[-0.42, -0.20], [-0.42, 0.20], [0.14, 0.20], [0.14, -0.20]]"
-      footprint_padding: 0.04
+      footprint_padding: 0.1
 
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -283,8 +283,8 @@ local_costmap:
           inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.60
-        cost_scaling_factor: 4.0
+        inflation_radius: 1.0
+        cost_scaling_factor: 5.0
 
 velocity_smoother:
   ros__parameters:
