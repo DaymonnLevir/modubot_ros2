@@ -1,7 +1,7 @@
 map_server:
   ros__parameters:
     use_sim_time: false
-    yaml_filename: "piso01.yaml"
+    yaml_filename: "PisoInferiorDC.yaml"
     topic_name: "map"
     frame_id: "map"
 
@@ -21,6 +21,35 @@ amcl:
     scan_topic: "scan_filtered"
     min_particles: 500
     max_particles: 2000
+    max_beams: 80
+    update_min_d: 0.08
+    update_min_a: 0.08
+    resample_interval: 1
+    transform_tolerance: 0.5
+    recovery_alpha_fast: 0.1
+    recovery_alpha_slow: 0.001
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    alpha1: 0.30
+    alpha2: 0.40
+    alpha3: 0.30
+    alpha4: 0.40
+    alpha5: 0.2
+    laser_model_type: "likelihood_field_prob"
+    laser_likelihood_max_dist: 2.0
+    laser_min_range: 0.15
+    laser_max_range: 8.0
+    sigma_hit: 0.18
+    z_hit: 0.8
+    z_rand: 0.2
+    do_beamskip: true
+    beam_skip_distance: 0.5
+    beam_skip_threshold: 0.3
+    beam_skip_error_threshold: 0.9
+    pf_err: 0.05
+    pf_z: 0.99
+    save_pose_rate: 0.5
+    tf_broadcast: true
+    always_reset_initial_pose: false
     set_initial_pose: true
     initial_pose:
       x: 0.0
@@ -33,27 +62,146 @@ bt_navigator:
     use_sim_time: false
     global_frame: "map"
     robot_base_frame: "base_link"
+    bt_loop_duration: 100
+    default_nav_to_pose_bt_xml: "__MODUBOT_NAV_TO_POSE_BT__"
+    default_nav_through_poses_bt_xml: "__MODUBOT_NAV_THROUGH_POSES_BT__"
 
 planner_server:
   ros__parameters:
     use_sim_time: false
+    expected_planner_frequency: 2.0
     planner_plugins: ["GridBased"]
     GridBased:
-      plugin: "nav2_navfn_planner/NavfnPlanner"
+      plugin: "nav2_smac_planner/SmacPlannerLattice"
+      tolerance: 0.20
+      allow_unknown: false
+      max_iterations: 1000000
+      max_on_approach_iterations: 1000
+      max_planning_time: 2.0
+      lattice_filepath: "__MODUBOT_LATTICE_FILE__"
+      cache_obstacle_heuristic: false
+      reverse_penalty: 5.0
+      change_penalty: 0.10
+      non_straight_penalty: 1.10
+      cost_penalty: 4.0
+      retrospective_penalty: 0.025
+      rotation_penalty: 5.0
+      analytic_expansion_ratio: 3.5
+      analytic_expansion_max_length: 2.5
+      lookup_table_size: 10.0
+      allow_reverse_expansion: false
+      smooth_path: false
 
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 20.0
+    controller_frequency: 10.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.5
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 0.5
+    progress_checker_plugin: "progress_checker"
+    goal_checker_plugins: ["goal_checker"]
     controller_plugins: ["FollowPath"]
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.05
+      movement_time_allowance: 8.0
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.15
+      yaw_goal_tolerance: 0.15
+      stateful: true
     FollowPath:
-      plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 0.05
-      lookahead_dist: 0.6
-      min_lookahead_dist: 0.3
-      max_lookahead_dist: 1.0
-      rotate_to_heading_angular_vel: 0.6
-      transform_tolerance: 0.2
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 48
+      model_dt: 0.1
+      batch_size: 700
+      vx_std: 0.20
+      vy_std: 0.0
+      wz_std: 0.60
+      vx_max: 0.25
+      vx_min: 0.0
+      vy_max: 0.0
+      wz_max: 0.8
+      iteration_count: 1
+      prune_distance: 1.5
+      transform_tolerance: 0.5
+      temperature: 0.3
+      gamma: 0.015
+      motion_model: "DiffDrive"
+      visualize: false
+      retry_attempt_limit: 1
+      reset_period: 1.0
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 10
+        time_step: 5
+      critics:
+        - "ConstraintCritic"
+        - "CostCritic"
+        - "GoalCritic"
+        - "GoalAngleCritic"
+        - "PathAlignCritic"
+        - "PathFollowCritic"
+        - "PathAngleCritic"
+        - "PreferForwardCritic"
+        - "VelocityDeadbandCritic"
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+        critical_cost: 300.0
+        consider_footprint: true
+        collision_cost: 1000000.0
+        near_goal_distance: 0.5
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.2
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 6.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 3
+        threshold_to_consider: 0.5
+        offset_from_furthest: 8
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 5
+        threshold_to_consider: 1.2
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 4
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 1.0
+        forward_preference: true
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.5
+      VelocityDeadbandCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 35.0
+        deadband_velocities: [0.03, 0.0, 0.10]
 
 global_costmap:
   global_costmap:
@@ -61,28 +209,42 @@ global_costmap:
       use_sim_time: false
       global_frame: "map"
       robot_base_frame: "base_link"
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 2.0
+      publish_frequency: 1.0
       resolution: 0.05
+      transform_tolerance: 0.5
+      track_unknown_space: true
 
-      # Ajuste para o seu robô:
-      robot_radius: 0.26
+      footprint: "[[-0.42, -0.20], [-0.42, 0.20], [0.14, 0.20], [0.14, -0.20]]"
+      footprint_padding: 0.04
 
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
+        footprint_clearing_enabled: true
+        combination_method: 1
         observation_sources: "scan"
         scan:
-          topic: "scan_filtered"
+          topic: "/scan_filtered"
           data_type: "LaserScan"
           marking: true
           clearing: true
           max_obstacle_height: 2.0
+          obstacle_min_range: 0.15
+          obstacle_max_range: 6.0
+          raytrace_min_range: 0.15
+          raytrace_max_range: 8.0
+          observation_persistence: 0.25
+          inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.45
+        inflation_radius: 1.30
+        cost_scaling_factor: 1.6
+        inflate_unknown: false
+        inflate_around_unknown: true
 
 local_costmap:
   local_costmap:
@@ -93,29 +255,95 @@ local_costmap:
       update_frequency: 10.0
       publish_frequency: 5.0
       rolling_window: true
-      width: 3
-      height: 3
+      width: 6
+      height: 6
       resolution: 0.05
+      transform_tolerance: 0.5
 
-      # Ajuste para o seu robô:
-      robot_radius: 0.26
+      footprint: "[[-0.42, -0.20], [-0.42, 0.20], [0.14, 0.20], [0.14, -0.20]]"
+      footprint_padding: 0.1
 
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
+        footprint_clearing_enabled: true
+        combination_method: 1
         observation_sources: "scan"
         scan:
-          topic: "scan_filtered"
+          topic: "/scan_filtered"
           data_type: "LaserScan"
           marking: true
           clearing: true
           max_obstacle_height: 2.0
+          obstacle_min_range: 0.15
+          obstacle_max_range: 3.0
+          raytrace_min_range: 0.15
+          raytrace_max_range: 3.5
+          observation_persistence: 0.25
+          inf_is_valid: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.35
-      
-lifecycle_manager_navigation:
+        inflation_radius: 1.0
+        cost_scaling_factor: 5.0
+
+velocity_smoother:
   ros__parameters:
     use_sim_time: false
-    autostart: true
-    node_names: ['map_server', 'amcl', 'planner_server', 'controller_server', 'bt_navigator']
+    smoothing_frequency: 20.0
+    scale_velocities: false
+    feedback: "OPEN_LOOP"
+    max_velocity: [0.25, 0.0, 0.8]
+    min_velocity: [-0.15, 0.0, -0.8]
+    max_accel: [0.5, 0.0, 1.5]
+    max_decel: [-0.8, 0.0, -2.0]
+    odom_topic: "odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.03, 0.0, 0.10]
+    velocity_timeout: 0.5
+
+behavior_server:
+  ros__parameters:
+    use_sim_time: false
+    costmap_topic: local_costmap/costmap_raw
+    footprint_topic: local_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+    global_frame: odom
+    robot_base_frame: base_link
+    transform_tolerance: 0.5
+    # Humble has no per-goal switch to disable Spin collision checking. A zero
+    # horizon keeps in-place rotation available as the only active recovery.
+    simulate_ahead_time: 0.0
+    max_rotational_vel: 0.8
+    min_rotational_vel: 0.35
+    rotational_acc_lim: 1.5
+
+collision_monitor:
+  ros__parameters:
+    use_sim_time: false
+    base_frame_id: "base_link"
+    odom_frame_id: "odom"
+    cmd_vel_in_topic: "/cmd_vel"
+    cmd_vel_out_topic: "/cmd_vel_safe"
+    transform_tolerance: 0.5
+    source_timeout: 0.35
+    base_shift_correction: true
+    stop_pub_timeout: 1.0
+    polygons: ["StopZone"]
+    StopZone:
+      type: "polygon"
+      points: [0.28, 0.26, 0.28, -0.26, 0.18, -0.26, 0.18, 0.26]
+      action_type: "stop"
+      max_points: 1
+      visualize: true
+      polygon_pub_topic: "collision_monitor/stop_zone"
+      enabled: true
+    observation_sources: ["scan"]
+    scan:
+      type: "scan"
+      topic: "/scan_filtered"
+      enabled: true

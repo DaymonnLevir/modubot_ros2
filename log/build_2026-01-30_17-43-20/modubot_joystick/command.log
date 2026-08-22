@@ -1,2 +1,0 @@
-Invoking command in '/workspace/build/modubot_joystick': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick
-Invoked command in '/workspace/build/modubot_joystick' returned '1': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /workspace/modubot_ws/src/modubot_joystick -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/workspace/install/modubot_joystick

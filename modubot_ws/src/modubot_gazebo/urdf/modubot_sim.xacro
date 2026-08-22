@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<robot name="modubot_model" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="cmd_vel_topic" default="/cmd_vel_safe"/>
+  <xacro:include filename="$(find modubot_model_description)/urdf/modubot_model.xacro"/>
+
+  <gazebo reference="base_link">
+    <material>Gazebo/Silver</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+    <self_collide>false</self_collide>
+  </gazebo>
+
+  <gazebo reference="laser">
+    <material>Gazebo/Black</material>
+    <sensor name="lidar_sensor" type="ray">
+      <always_on>true</always_on>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265</min_angle>
+            <max_angle>3.14159265</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.15</min>
+          <max>12.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.005</stddev>
+        </noise>
+      </ray>
+      <plugin name="gazebo_ros_lidar" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>laser</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="left_wheel_1">
+    <material>Gazebo/Black</material>
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+  </gazebo>
+
+  <gazebo reference="right_wheel_1">
+    <material>Gazebo/Black</material>
+    <mu1>1.5</mu1>
+    <mu2>1.5</mu2>
+  </gazebo>
+
+  <gazebo reference="left_caster_1">
+    <material>Gazebo/Black</material>
+    <mu1>0.05</mu1>
+    <mu2>0.05</mu2>
+  </gazebo>
+
+  <gazebo reference="right_caster_1">
+    <material>Gazebo/Black</material>
+    <mu1>0.05</mu1>
+    <mu2>0.05</mu2>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="modubot_diff_drive" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <remapping>cmd_vel:=$(arg cmd_vel_topic)</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.225</wheel_separation>
+      <wheel_diameter>0.156</wheel_diameter>
+      <max_wheel_acceleration>4.5</max_wheel_acceleration>
+      <max_wheel_torque>10.0</max_wheel_torque>
+      <odometry_source>0</odometry_source>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_link</robot_base_frame>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
+      <covariance_x>0.001</covariance_x>
+      <covariance_y>0.001</covariance_y>
+      <covariance_yaw>0.01</covariance_yaw>
+    </plugin>
+  </gazebo>
+</robot>

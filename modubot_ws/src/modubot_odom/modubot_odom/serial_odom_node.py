@@ -1,10 +1,10 @@
 import math
-import serial
 
+from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.node import Node
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import TransformStamped
+from std_msgs.msg import String
 from tf2_ros import TransformBroadcaster
 
 
@@ -12,166 +12,163 @@ class SerialOdomNode(Node):
     def __init__(self):
         super().__init__('serial_odom')
 
-        # Parâmetros
-        self.declare_parameter('port', '/dev/ttyUSB0')
-        self.declare_parameter('baud', 115200)
-        self.declare_parameter('ticks_per_rev_left', 90.0)
-        self.declare_parameter('ticks_per_rev_right', 90.0)
-        self.declare_parameter('wheel_radius', 0.078)      # m
-        self.declare_parameter('wheel_separation', 0.223)  # m
+        self.declare_parameter('serial_rx_topic', '/modubot/serial_rx')
+        self.declare_parameter('ticks_per_rev_left', 91.0)
+        self.declare_parameter('ticks_per_rev_right', 91.0)
+        self.declare_parameter('wheel_radius', 0.078)
+        self.declare_parameter('wheel_separation', 0.225)
         self.declare_parameter('frame_id', 'odom')
         self.declare_parameter('child_frame_id', 'base_link')
+        self.declare_parameter('publish_rate', 20.0)
+        self.declare_parameter('velocity_timeout', 0.2)
         self.declare_parameter('debug', False)
 
-        port = self.get_parameter('port').get_parameter_value().string_value
-        baud = self.get_parameter('baud').get_parameter_value().integer_value
-
-        self.ticks_per_rev_L = float(
+        serial_rx_topic = str(self.get_parameter('serial_rx_topic').value)
+        self.ticks_left = float(
             self.get_parameter('ticks_per_rev_left').value)
-        self.ticks_per_rev_R = float(
+        self.ticks_right = float(
             self.get_parameter('ticks_per_rev_right').value)
-        self.R = float(self.get_parameter('wheel_radius').value)
-        self.B = float(self.get_parameter('wheel_separation').value)
-        self.frame_id = self.get_parameter('frame_id').value
-        self.child_frame_id = self.get_parameter('child_frame_id').value
+        self.wheel_radius = float(self.get_parameter('wheel_radius').value)
+        self.wheel_separation = float(
+            self.get_parameter('wheel_separation').value)
+        self.frame_id = str(self.get_parameter('frame_id').value)
+        self.child_frame_id = str(
+            self.get_parameter('child_frame_id').value)
+        self.publish_rate = float(
+            self.get_parameter('publish_rate').value)
+        self.velocity_timeout = float(
+            self.get_parameter('velocity_timeout').value)
         self.debug = bool(self.get_parameter('debug').value)
 
-        # Estado de pose
+        if min(
+            self.ticks_left,
+            self.ticks_right,
+            self.wheel_radius,
+            self.wheel_separation,
+            self.publish_rate,
+            self.velocity_timeout,
+        ) <= 0.0:
+            raise ValueError(
+                'Geometria, ticks e parâmetros temporais devem ser positivos.')
+
         self.x = 0.0
         self.y = 0.0
-        self.theta = 0.0  # yaw
+        self.theta = 0.0
+        self.last_linear = 0.0
+        self.last_angular = 0.0
+        self.last_measurement_ns = None
 
-        # Serial
-        try:
-            self.ser = serial.Serial(port, baudrate=baud, timeout=0.1)
-            self.get_logger().info(f"Abrindo serial {port} @ {baud}")
-        except Exception as e:
-            self.get_logger().error(f"Falha ao abrir {port}: {e}")
-            raise
-
-        # Publicadores
         self.odom_pub = self.create_publisher(Odometry, 'odom', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
+        self.create_subscription(String, serial_rx_topic, self.on_serial_line, 100)
+        self.create_timer(1.0 / self.publish_rate, self.publish_odometry)
 
-        # Timer de leitura
-        self.timer = self.create_timer(0.01, self.read_serial)  # 100 Hz
+        self.get_logger().info(
+            f'Odometria ouvindo {serial_rx_topic}; '
+            f'ticks=({self.ticks_left:g}, {self.ticks_right:g})')
 
-    def quaternion_from_yaw(self, yaw):
-        """Retorna (x,y,z,w) para rotação apenas em Z."""
+    @staticmethod
+    def quaternion_from_yaw(yaw):
         half = yaw / 2.0
-        return (0.0, 0.0, math.sin(half), math.cos(half))
+        return 0.0, 0.0, math.sin(half), math.cos(half)
 
-    def read_serial(self):
-        try:
-            line_bytes = self.ser.readline()
-        except Exception as e:
-            self.get_logger().warn(f"Erro lendo serial: {e}")
-            return
-
-        if not line_bytes:
-            return
-
-        try:
-            line = line_bytes.decode('utf-8').strip()
-        except UnicodeDecodeError:
-            return
-
-        if not line:
-            return
-
-        # Linha do tipo: "O dL dR dt_ms"
-        if not line.startswith('O'):
-            # pode ser log do ESP
-            if self.debug:
-                self.get_logger().info(f"DBG ESP: {line}")
+    def on_serial_line(self, message):
+        line = message.data.strip()
+        if not line.startswith('O '):
             return
 
         parts = line.split()
         if len(parts) != 4:
             if self.debug:
-                self.get_logger().warn(f"Linha O inválida: {line}")
+                self.get_logger().warn(f'Odometria inválida: {line}')
             return
 
         try:
-            dL = int(parts[1])
-            dR = int(parts[2])
-            dt_ms = int(parts[3])
+            ticks_left = int(parts[1])
+            ticks_right = int(parts[2])
+            dt = int(parts[3]) / 1000.0
         except ValueError:
             if self.debug:
-                self.get_logger().warn(f"Falha no parse: {line}")
+                self.get_logger().warn(f'Falha ao interpretar: {line}')
             return
 
-        if dt_ms <= 0:
+        if dt <= 0.0:
             return
 
-        dt = dt_ms / 1000.0  # s
+        distance_left = (
+            2.0 * math.pi * self.wheel_radius
+            * ticks_left / self.ticks_left
+        )
+        distance_right = (
+            2.0 * math.pi * self.wheel_radius
+            * ticks_right / self.ticks_right
+        )
+        velocity_left = distance_left / dt
+        velocity_right = distance_right / dt
+        linear = (velocity_right + velocity_left) / 2.0
+        angular = (
+            velocity_right - velocity_left
+        ) / self.wheel_separation
 
-        # Distâncias percorridas por cada roda
-        dist_L = 2.0 * math.pi * self.R * (dL / self.ticks_per_rev_L)
-        dist_R = 2.0 * math.pi * self.R * (dR / self.ticks_per_rev_R)
-
-        # Velocidades lineares de cada roda
-        vL = dist_L / dt
-        vR = dist_R / dt
-
-        # Cinemática diferencial
-        v = (vR + vL) / 2.0
-        w = (vR - vL) / self.B
-
-        # Integração simples
-        self.theta += w * dt
-        self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
-
-        self.x += v * math.cos(self.theta) * dt
-        self.y += v * math.sin(self.theta) * dt
+        delta_theta = angular * dt
+        heading_mid = self.theta + delta_theta / 2.0
+        self.x += linear * math.cos(heading_mid) * dt
+        self.y += linear * math.sin(heading_mid) * dt
+        self.theta = math.atan2(
+            math.sin(self.theta + delta_theta),
+            math.cos(self.theta + delta_theta),
+        )
+        self.last_linear = linear
+        self.last_angular = angular
+        self.last_measurement_ns = self.get_clock().now().nanoseconds
 
         if self.debug:
             self.get_logger().info(
-                f"dL={dL} dR={dR} dt={dt:.3f}s -> v={v:.3f} w={w:.3f} x={self.x:.3f} y={self.y:.3f} th={self.theta:.3f}"
-            )
+                f'dL={ticks_left} dR={ticks_right} dt={dt:.3f}s '
+                f'v={linear:.3f} w={angular:.3f} '
+                f'x={self.x:.3f} y={self.y:.3f} theta={self.theta:.3f}')
 
-        # Publica Odometry
-        now = self.get_clock().now().to_msg()
+    def publish_odometry(self):
+        now = self.get_clock().now()
+        linear = 0.0
+        angular = 0.0
+        if self.last_measurement_ns is not None:
+            age = (now.nanoseconds - self.last_measurement_ns) / 1e9
+            if age <= self.velocity_timeout:
+                linear = self.last_linear
+                angular = self.last_angular
+
+        stamp = now.to_msg()
+        qx, qy, qz, qw = self.quaternion_from_yaw(self.theta)
 
         odom = Odometry()
-        odom.header.stamp = now
+        odom.header.stamp = stamp
         odom.header.frame_id = self.frame_id
         odom.child_frame_id = self.child_frame_id
-
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y
-        odom.pose.pose.position.z = 0.0
-
-        qx, qy, qz, qw = self.quaternion_from_yaw(self.theta)
         odom.pose.pose.orientation.x = qx
         odom.pose.pose.orientation.y = qy
         odom.pose.pose.orientation.z = qz
         odom.pose.pose.orientation.w = qw
-
-        # Covariâncias simples (ajustar depois se quiser)
         odom.pose.covariance[0] = 0.01
         odom.pose.covariance[7] = 0.01
         odom.pose.covariance[35] = 0.1
-
-        odom.twist.twist.linear.x = v
-        odom.twist.twist.angular.z = w
-
+        odom.twist.twist.linear.x = linear
+        odom.twist.twist.angular.z = angular
         self.odom_pub.publish(odom)
 
-        # Publica TF odom -> base_link
-        t = TransformStamped()
-        t.header.stamp = now
-        t.header.frame_id = self.frame_id
-        t.child_frame_id = self.child_frame_id
-        t.transform.translation.x = self.x
-        t.transform.translation.y = self.y
-        t.transform.translation.z = 0.0
-        t.transform.rotation.x = qx
-        t.transform.rotation.y = qy
-        t.transform.rotation.z = qz
-        t.transform.rotation.w = qw
-
-        self.tf_broadcaster.sendTransform(t)
+        transform = TransformStamped()
+        transform.header.stamp = stamp
+        transform.header.frame_id = self.frame_id
+        transform.child_frame_id = self.child_frame_id
+        transform.transform.translation.x = self.x
+        transform.transform.translation.y = self.y
+        transform.transform.rotation.x = qx
+        transform.transform.rotation.y = qy
+        transform.transform.rotation.z = qz
+        transform.transform.rotation.w = qw
+        self.tf_broadcaster.sendTransform(transform)
 
 
 def main(args=None):
@@ -183,5 +180,5 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
-
+        if rclpy.ok():
+            rclpy.shutdown()

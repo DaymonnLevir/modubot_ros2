@@ -1,0 +1,46 @@
+cmdvel_to_serial:
+  ros__parameters:
+    port: /dev/ttyUSB0
+    baud: 115200
+    cmd_vel_topic: /cmd_vel
+    serial_rx_topic: /modubot/serial_rx
+
+    wheel_separation: 0.225
+    wheel_radius: 0.078
+    max_wheel_speed: 0.6
+    ticks_per_rev_left: 91.0
+    ticks_per_rev_right: 91.0
+
+    send_rate: 20.0
+    read_rate: 100.0
+    cmd_timeout: 0.5
+    allow_reverse: false
+    closed_loop: true
+    debug: false
+
+    kp: 12.0
+    ki: 40.0
+    kd: 0.0
+    kff: 0.0
+    dac_min: 0.0
+
+serial_odom:
+  ros__parameters:
+    serial_rx_topic: /modubot/serial_rx
+    wheel_separation: 0.225
+    wheel_radius: 0.078
+    ticks_per_rev_left: 91.0
+    ticks_per_rev_right: 91.0
+    frame_id: odom
+    child_frame_id: base_link
+    publish_rate: 20.0
+    velocity_timeout: 0.2
+    debug: false
+
+battery_monitor:
+  ros__parameters:
+    serial_rx_topic: /modubot/serial_rx
+    battery_voltage_min: 18.0
+    battery_voltage_max: 25.0
+    soc_alpha: 0.05
+    design_capacity: 5.0

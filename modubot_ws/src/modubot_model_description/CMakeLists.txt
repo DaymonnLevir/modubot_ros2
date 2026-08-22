@@ -7,12 +7,16 @@ find_package(ament_cmake REQUIRED)
 # 2. Instalar as pastas de recursos do robô
 # Adicionamos 'launch' na lista para que o comando ros2 launch funcione
 install(
-  DIRECTORY 
-    urdf 
-    meshes 
+  DIRECTORY
+    urdf
+    meshes
     launch
-    scripts
   DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  PROGRAMS scripts/simple_filter.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 # 3. Opções de compilação (opcional, mantido do seu original)

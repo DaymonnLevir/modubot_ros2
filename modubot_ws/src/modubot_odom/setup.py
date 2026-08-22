@@ -13,14 +13,11 @@ setup(
         ('share/' + package_name + '/launch',
             ['launch/odom_serial.launch.py']),
     ],
-    install_requires=[
-        'setuptools',
-        'pyserial',
-    ],
+    install_requires=['setuptools'],
     zip_safe=True,
     maintainer='root',
     maintainer_email='root@todo.todo',
-    description='Serial odometry reader for ModuBot',
+    description='Wheel odometry from ModuBot serial telemetry',
     license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
@@ -29,4 +26,3 @@ setup(
         ],
     },
 )
-

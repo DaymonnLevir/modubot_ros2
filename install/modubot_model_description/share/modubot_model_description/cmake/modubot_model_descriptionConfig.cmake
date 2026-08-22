@@ -1,1 +1,0 @@
-/workspace/build/modubot_model_description/ament_cmake_core/modubot_model_descriptionConfig.cmake

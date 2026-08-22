@@ -1,5 +1,7 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -14,8 +16,8 @@ def generate_launch_description():
 
     port_arg      = DeclareLaunchArgument('port',  default_value='/dev/ttyUSB0')
     baud_arg      = DeclareLaunchArgument('baud',  default_value='115200')
-    vmax_arg      = DeclareLaunchArgument('v_wheel_max', default_value='0.6')
-    dbg_arg       = DeclareLaunchArgument('debug', default_value='true')
+    start_base_arg = DeclareLaunchArgument('start_base', default_value='true')
+    closed_loop_arg = DeclareLaunchArgument('closed_loop', default_value='true')
 
     #
     # YAML do teleop (mantém seus mapeamentos/ganhos)
@@ -42,7 +44,7 @@ def generate_launch_description():
     )
 
     #
-    # 2) teleop_twist_joy (gera /modubot/cmd_vel a partir do joystick)
+    # 2) teleop_twist_joy (gera /cmd_vel a partir do joystick)
     #
     teleop_node = Node(
         package='teleop_twist_joy',
@@ -50,33 +52,28 @@ def generate_launch_description():
         name='teleop_twist_joy_node',
         output='screen',
         parameters=[teleop_yaml],
-        remappings=[('/cmd_vel', '/modubot/cmd_vel')]
     )
 
-    #
-    # 3) bridge /modubot/cmd_vel -> serial (ESP32)
-    #
-    bridge_node = Node(
-        package='modubot_serial_bridge',
-        executable='cmdvel_to_serial',
-        name='cmdvel_to_serial',
-        output='screen',
-        parameters=[{
-            'port':        LaunchConfiguration('port'),
-            'baud':        LaunchConfiguration('baud'),
-            'v_wheel_max': LaunchConfiguration('v_wheel_max'),
-            'debug':       LaunchConfiguration('debug'),
-        }],
-        remappings=[('/cmd_vel', '/modubot/cmd_vel')]
+    base_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(PathJoinSubstitution([
+            FindPackageShare('modubot_serial_bridge'),
+            'launch',
+            'base.launch.py',
+        ])),
+        condition=IfCondition(LaunchConfiguration('start_base')),
+        launch_arguments={
+            'port': LaunchConfiguration('port'),
+            'baud': LaunchConfiguration('baud'),
+            'closed_loop': LaunchConfiguration('closed_loop'),
+        }.items(),
     )
 
     return LaunchDescription([
         # argumentos
         joy_dev_arg, joy_deadzone, joy_autorp,
-        port_arg, baud_arg, vmax_arg, dbg_arg,
+        port_arg, baud_arg, start_base_arg, closed_loop_arg,
         # nós
         joy_node,
         teleop_node,
-        bridge_node,
+        base_launch,
     ])
-

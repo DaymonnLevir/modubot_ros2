@@ -1,49 +1,76 @@
 #!/usr/bin/env python3
+import math
+
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
-import math
+
 
 class ModubotFilter(Node):
     def __init__(self):
         super().__init__('modubot_filter')
-        self.sub = self.create_subscription(LaserScan, '/scan', self.callback, 10)
-        self.pub = self.create_publisher(LaserScan, '/scan_filtered', 10)
-        self.get_logger().info('Filtro do Modubot iniciado. Corrigindo Time Delay e Filtro.')
+
+        self.declare_parameter('input_topic', '/scan')
+        self.declare_parameter('output_topic', '/scan_filtered')
+        self.declare_parameter('minimum_range', 0.15)
+        self.declare_parameter('blocked_sector_enabled', True)
+        self.declare_parameter('blocked_sector_center', 0.0)
+        self.declare_parameter(
+            'blocked_sector_half_width', math.radians(15.0))
+
+        input_topic = str(self.get_parameter('input_topic').value)
+        output_topic = str(self.get_parameter('output_topic').value)
+        self.minimum_range = float(
+            self.get_parameter('minimum_range').value)
+        self.blocked_sector_enabled = bool(
+            self.get_parameter('blocked_sector_enabled').value)
+        self.blocked_sector_center = float(
+            self.get_parameter('blocked_sector_center').value)
+        self.blocked_sector_half_width = float(
+            self.get_parameter('blocked_sector_half_width').value)
+
+        self.sub = self.create_subscription(
+            LaserScan, input_topic, self.callback, qos_profile_sensor_data)
+        self.pub = self.create_publisher(
+            LaserScan, output_topic, qos_profile_sensor_data)
+        blocked_width = (
+            2.0 * self.blocked_sector_half_width
+            if self.blocked_sector_enabled else 0.0
+        )
+        useful_fov = 360.0 - math.degrees(blocked_width)
+        self.get_logger().info(
+            f'Filtro do ModuBot iniciado: campo de visão útil de '
+            f'aproximadamente {useful_fov:.1f} graus e timestamp original '
+            'preservado.')
+
+    @staticmethod
+    def angular_distance(angle, center):
+        return math.atan2(
+            math.sin(angle - center), math.cos(angle - center))
 
     def callback(self, msg):
-        # --- PASSO 1: CORREÇÃO DO DELAY (CRÍTICO) ---
-        # Forçamos a mensagem filtrada a ter o tempo exato de AGORA na Jetson
-        msg.header.stamp = self.get_clock().now().to_msg()
-        
         filtered_ranges = []
-        
-        for i, r in enumerate(msg.ranges):
-            # Calcula o ângulo atual baseado no índice do feixe
-            angle = msg.angle_min + (i * msg.angle_increment)
-            
-            # Normaliza o ângulo para ficar entre -pi e pi
-            while angle > math.pi: angle -= 2.0 * math.pi
-            while angle < -math.pi: angle += 2.0 * math.pi
 
-            # --- PASSO 2: LÓGICA DE CORTE CORRIGIDA ---
-            # Frente do robô em ROS é o ângulo 0. 
-            # 90° para esquerda é +1.57 rad, 90° para direita é -1.57 rad.
-            # Para manter apenas a FRENTE (um cone de 180°), usamos abs(angle) < 1.57
-            
-            if abs(angle) > 1.57:  # MUDANÇA AQUI: de > para <
-                # Filtro de proximidade (evitar ler a própria estrutura do robô)
-                if r > 0.15:
-                    filtered_ranges.append(r)
-                else:
-                    filtered_ranges.append(float('inf'))
+        for i, r in enumerate(msg.ranges):
+            angle = msg.angle_min + (i * msg.angle_increment)
+            blocked = (
+                self.blocked_sector_enabled
+                and abs(self.angular_distance(
+                    angle, self.blocked_sector_center
+                )) <= self.blocked_sector_half_width
+            )
+
+            if blocked or (math.isfinite(r) and r < self.minimum_range):
+                # NaN means "not observed". Using +inf here would make the
+                # obstacle layer raytrace the blind sector as free space.
+                filtered_ranges.append(float('nan'))
             else:
-                # Tudo que estiver atrás vira infinito
-                filtered_ranges.append(float('inf'))
-        
-        # Atualiza a mensagem e publica
+                filtered_ranges.append(r)
+
         msg.ranges = filtered_ranges
         self.pub.publish(msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -54,7 +81,9 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -1,4 +1,6 @@
-from .cmdvel_to_serial import *
+"""ModuBot serial bridge and calibration utilities."""
+
+
 def main():
     import rclpy
     rclpy.init()

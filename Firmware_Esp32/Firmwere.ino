@@ -1,0 +1,206 @@
+#include <Arduino.h>
+
+// ===== PINOS (ESP32 38 pinos) =====
+#define DAC_L   26   // esquerda (DAC2)
+#define DAC_R   25   // direita  (DAC1)
+#define DIR_L   17   // esquerda (OUTPUT_OPEN_DRAIN)
+#define DIR_R   19   // direita  (OUTPUT_OPEN_DRAIN)
+#define BRAKE   16   // HIGH = freio ON
+
+// Pinos de velocidade (saída S do driver -> conversor 5V->3V3 -> ESP32)
+#define SPEED_L 35   // S do motor esquerdo
+#define SPEED_R 34   // S do motor direito
+
+// ===== CONFIG GERAL =====
+const uint8_t  MAX_DAC          = 255;
+const uint16_t T_DIR_SETTLE_MS  = 100;   // tempo pra assentar após inverter direção
+const uint32_t WATCHDOG_MS      = 600;   // sem comando => freia
+const float    DEAD_NORM        = 0.02f; // zona morta para |vel| < 2%
+
+// ===== CONFIG ODOMETRIA (ajuste depois) =====
+// Pulsos por volta de cada roda (você ajusta depois):
+const float TICKS_PER_REV_L = 90.0f;   // EXEMPLO
+const float TICKS_PER_REV_R = 90.0f;   // EXEMPLO
+// Raio da roda (m) – também só pra referência no ROS:
+const float WHEEL_RADIUS_M  = 0.05f;   // EXEMPLO
+
+// Período de envio da odometria em ms
+const uint32_t ODOM_PERIOD_MS = 50;
+
+// ===== Estado do motor =====
+bool dirL_front = true, dirR_front = true;
+uint32_t last_cmd_ms = 0;
+
+// ===== Estado da odometria (ticks) =====
+volatile int32_t ticksL = 0;
+volatile int32_t ticksR = 0;
+
+// para calcular incrementos entre envios
+int32_t last_sent_ticksL = 0;
+int32_t last_sent_ticksR = 0;
+
+// ----- Funções de hardware dos motores -----
+static inline void setSpeedRaw(uint8_t l, uint8_t r){
+  dacWrite(DAC_L, l);
+  dacWrite(DAC_R, r);
+}
+
+static inline void brakes(bool on){
+  digitalWrite(BRAKE, on ? HIGH : LOW);
+  if(on) {
+    setSpeedRaw(0,0);
+  }
+}
+
+static inline void setDir(bool leftFront, bool rightFront){
+  digitalWrite(DIR_L, leftFront  ? HIGH : LOW); // open-drain
+  digitalWrite(DIR_R, rightFront ? HIGH : LOW);
+  dirL_front = leftFront;
+  dirR_front = rightFront;
+}
+
+static inline uint8_t normToDAC(float x){
+  x = fabsf(x);
+  if(x < DEAD_NORM) return 0;
+  if(x > 1.0f) x = 1.0f;
+  return (uint8_t)roundf(x * MAX_DAC);
+}
+
+// aplica comando normalizado [-1..1] por roda
+void applyWheel(float vL, float vR){
+  bool nextDirL = (vL >= 0.0f);
+  bool nextDirR = (vR >= 0.0f);
+
+  uint8_t dacL = normToDAC(vL);
+  uint8_t dacR = normToDAC(vR);
+
+  // Se inverter direção com velocidade, alivia antes
+  if((nextDirL != dirL_front && dacL > 0) ||
+     (nextDirR != dirR_front && dacR > 0)){
+    setSpeedRaw(0,0);
+    setDir(nextDirL, nextDirR);
+    delay(T_DIR_SETTLE_MS);
+  } else {
+    setDir(nextDirL, nextDirR);
+  }
+
+  brakes(false);
+  setSpeedRaw(dacL, dacR);
+}
+
+// ===== ISRs dos pulsos de velocidade =====
+void IRAM_ATTR isrSpeedL(){
+  ticksL++;
+}
+
+void IRAM_ATTR isrSpeedR(){
+  ticksR++;
+}
+
+// ===== Comunicação serial (linha de comando) =====
+String line;
+
+// ===== Setup =====
+void setup(){
+  Serial.begin(115200);
+  delay(300);
+
+  // Motores
+  pinMode(BRAKE, OUTPUT);
+  pinMode(DIR_L, OUTPUT_OPEN_DRAIN);
+  pinMode(DIR_R, OUTPUT_OPEN_DRAIN);
+
+  brakes(true);
+  setDir(true,true);
+  setSpeedRaw(0,0);
+
+  // Entradas de velocidade (S)
+  pinMode(SPEED_L, INPUT);  // precisa de pull-up/pull-down externo
+  pinMode(SPEED_R, INPUT);
+
+  attachInterrupt(digitalPinToInterrupt(SPEED_L), isrSpeedL, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(SPEED_R), isrSpeedR, CHANGE);
+
+  last_cmd_ms = millis();
+
+  Serial.println(F("[ESP32 READY]"));
+  Serial.println(F("Comandos de velocidade: 'V <vL> <vR>' em [-1..1]"));
+  Serial.println(F("Freio imediato: 'S'"));
+  Serial.println(F("Odometria sai como: 'O dL dR dt_ms' (pulsos desde o ultimo envio)"));
+}
+
+// ===== Loop =====
+void loop(){
+  uint32_t now = millis();
+
+  // Watchdog: se ficar muito tempo sem comando, freia
+  if(now - last_cmd_ms > WATCHDOG_MS){
+    brakes(true);
+    last_cmd_ms = now;
+  }
+
+  // ---- Leitura dos comandos pela serial ----
+  while(Serial.available()){
+    char c = (char)Serial.read();
+    if(c == '\r') continue;
+
+    if(c == '\n'){
+      if(line.length()){
+        if(line[0] == 'V'){
+          float vL = 0, vR = 0;
+          // aceita "V -0.50 0.75"
+          if(sscanf(line.c_str() + 1, "%f %f", &vL, &vR) == 2){
+            vL = constrain(vL, -1.0f, 1.0f);
+            vR = constrain(vR, -1.0f, 1.0f);
+            applyWheel(vL, vR);
+          }
+        } else if(line[0] == 'S'){
+          // freio imediato, independente da direção / velocidade
+          brakes(true);
+        }
+      }
+      line = "";
+      last_cmd_ms = now;
+    } else {
+      if(line.length() < 64) line += c;
+    }
+  }
+
+  // ---- Envio periódico da odometria ----
+  static uint32_t last_odom_ms = 0;
+  if(now - last_odom_ms >= ODOM_PERIOD_MS){
+    last_odom_ms = now;
+
+    // copia atômica dos ticks
+    int32_t curL, curR;
+    noInterrupts();
+    curL = ticksL;
+    curR = ticksR;
+    interrupts();
+
+    int32_t dL_raw = curL - last_sent_ticksL;
+    int32_t dR_raw = curR - last_sent_ticksR;
+
+    last_sent_ticksL = curL;
+    last_sent_ticksR = curR;
+
+    // coloca sinal usando a direção atual
+    int8_t sL = dirL_front ? +1 : -1;
+    int8_t sR = dirR_front ? +1 : -1;
+
+    int32_t dL = dL_raw * sL;
+    int32_t dR = dR_raw * sR;
+
+    uint32_t dt_ms = ODOM_PERIOD_MS;
+
+    // Formato no estilo TurtleBot (simples de parsear no ROS):
+    // O <dL> <dR> <dt_ms>
+    Serial.print('O');
+    Serial.print(' ');
+    Serial.print(dL);
+    Serial.print(' ');
+    Serial.print(dR);
+    Serial.print(' ');
+    Serial.println(dt_ms);
+  }
+}
